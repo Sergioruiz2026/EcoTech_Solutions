@@ -217,6 +217,29 @@ def completar_cambio_obligatorio(repo_usuarios, sesion, intentos_maximos=3):
     return False
 
 
+def _validar_rbac_admin(actor, usuario_destino=None, nuevo_rol=None):
+    """Bloquea la elevacion de privilegios en cuentas administrativas.
+
+    Solo un Administrador activo puede crear, promover o tocar cuentas
+    administrativas. Gerentes y otros roles siguen pudiendo gestionar claves
+    temporales, desbloqueos y usuarios normales.
+    """
+    if actor is None:
+        raise ErrorDominio(
+            "Error de Seguridad: Solo un Administrador puede crear, promover o "
+            "modificar cuentas administrativas."
+        )
+
+    if getattr(actor, "rol", None) != "administrador":
+        if nuevo_rol == "administrador" or (
+            usuario_destino is not None and usuario_destino.rol == "administrador"
+        ):
+            raise ErrorDominio(
+                "Error de Seguridad: Solo un Administrador puede crear, promover o "
+                "modificar cuentas administrativas."
+            )
+
+
 def registrar_nuevo_usuario(repo_usuarios, administrador_autorizado=None):
     """Registra una cuenta con autorizacion de un gerente o administrador."""
     titulo("Crear usuario")
@@ -261,6 +284,11 @@ def registrar_nuevo_usuario(repo_usuarios, administrador_autorizado=None):
             or not administrador_autorizado.tiene_permiso("gestionar_usuarios")):
         print("  Autorizacion rechazada. La cuenta no fue creada.")
         return
+
+    # Reglas de seguridad RBAC: solo un Administrador puede crear cuentas de tipo
+    # Administrador o tocar perfiles administrativos.
+    if rol == "administrador":
+        _validar_rbac_admin(administrador_autorizado, nuevo_rol=rol)
 
     usuario = Usuario(nombre_usuario, contrasena, rol)
     repo_usuarios.crear(usuario)
@@ -321,7 +349,13 @@ def cambiar_contrasena_usuario(repo_usuarios):
           "los intentos fallidos y el estado de bloqueo.")
 
 
-def modificar_usuario(repo_usuarios):
+def modificar_usuario(repo_usuarios, sesion):
+    """Modifica usuarios respetando el control RBAC.
+
+    Los gerentes pueden seguir gestionando claves temporales, desbloqueos y
+    usuarios normales, pero no pueden crear, promocionar ni tocar cuentas
+    administrativas.
+    """
     mostrar_usuarios(repo_usuarios)
     id_usuario = leer_id("  ID del usuario a modificar: ")
     if id_usuario is None:
@@ -337,6 +371,12 @@ def modificar_usuario(repo_usuarios):
     nuevo_rol = pedir(
         f"  Rol [{usuario.rol}]: ",
         lambda valor: v.validar_opcion(valor, "El rol", roles), usuario.rol)
+
+    # Solo un Administrador puede promover a Administrador o modificar perfiles
+    # administrativos ajenos. Los gerentes pueden editar cuentas normales.
+    if nuevo_rol == "administrador" or usuario.rol == "administrador":
+        _validar_rbac_admin(sesion, usuario_destino=usuario, nuevo_rol=nuevo_rol)
+
     nueva_contrasena = getpass(
         "  Nueva clave (Enter para conservar la actual): ")
     repo_usuarios.actualizar(usuario, nuevo_rol, nueva_contrasena or None)
@@ -344,6 +384,7 @@ def modificar_usuario(repo_usuarios):
 
 
 def eliminar_usuario(repo_usuarios, sesion):
+    """Elimina usuarios aplicando la restriccion administrativa de RBAC."""
     mostrar_usuarios(repo_usuarios)
     id_usuario = leer_id("  ID del usuario a eliminar: ")
     if id_usuario is None:
@@ -356,6 +397,10 @@ def eliminar_usuario(repo_usuarios, sesion):
     if usuario.id == sesion.id:
         print("  No puede eliminar la cuenta con la que inicio sesion.")
         return
+
+    # Solo Administradores pueden eliminar cuentas administrativas.
+    if usuario.rol == "administrador":
+        _validar_rbac_admin(sesion, usuario_destino=usuario)
 
     confirmacion = pedir(
         f"  ¿Eliminar al usuario '{usuario.nombre_usuario}'? (S/N): ",
@@ -387,7 +432,7 @@ def menu_usuarios(sesion, repo_usuarios):
             elif opcion == "2":
                 registrar_nuevo_usuario(repo_usuarios, sesion)
             elif opcion == "3":
-                modificar_usuario(repo_usuarios)
+                modificar_usuario(repo_usuarios, sesion)
             elif opcion == "4":
                 eliminar_usuario(repo_usuarios, sesion)
             elif opcion == "5":
@@ -912,17 +957,15 @@ def generar_informes(sesion, repo_departamentos, repo_proyectos,
     print("\n  Exportar informe:")
     print("  1. PDF")
     print("  2. Excel")
-    print("  3. PDF y Excel")
     print("  0. No exportar")
     opcion = input("  Seleccione una opcion: ").strip()
 
     informes = {
         "1": [informe_pdf],
         "2": [informe_excel],
-        "3": [informe_pdf, informe_excel],
     }.get(opcion, [])
 
-    if opcion not in {"0", "1", "2", "3"}:
+    if opcion not in {"0", "1", "2"}:
         print("  Opcion no valida. No se exporto el informe.")
         return
 

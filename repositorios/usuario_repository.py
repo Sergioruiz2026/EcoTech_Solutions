@@ -3,6 +3,7 @@ RepositorioUsuario: persistencia de las cuentas de acceso.
 La contrasena nunca viaja ni se almacena: solo su resumen.
 """
 
+from seguridad.validaciones import ErrorDominio
 from modelos.usuario import Usuario
 from repositorios.repositorio_base import RepositorioBase
 
@@ -15,9 +16,48 @@ class RepositorioUsuario(RepositorioBase):
         FROM usuarios
     """
 
+    MENSAJE_SEGURIDAD_ADMIN = (
+        "Error de Seguridad: Solo un Administrador puede crear, promover o "
+        "modificar cuentas administrativas."
+    )
+
     def __init__(self, base_datos, repo_empleados):
         super().__init__(base_datos)
         self.repo_empleados = repo_empleados
+
+    @staticmethod
+    def validar_operacion_administrativa(actor, usuario_destino=None, nuevo_rol=None,
+                                        accion="operacion"):
+        """Restringe la elevacion de privilegios a cuentas administrativas.
+
+        Solo un usuario activo con rol Administrador puede:
+        1) crear un rol Administrador,
+        2) promover una cuenta a Administrador,
+        3) modificar o eliminar otras cuentas administrativas.
+        El resto de la gestion de usuarios y la administracion de claves temporales
+        sigue permitida para gerentes y perfiles autorizados no administrativos.
+        """
+        actor_rol = getattr(actor, "rol", None)
+        if actor_rol != "administrador":
+            es_promocion_admin = nuevo_rol == "administrador"
+            es_modificar_admin = (
+                usuario_destino is not None and usuario_destino.rol == "administrador"
+            )
+            if es_promocion_admin or es_modificar_admin:
+                raise ErrorDominio(
+                    RepositorioUsuario.MENSAJE_SEGURIDAD_ADMIN
+                )
+
+        # En este punto el actor es administrador. Rechazar la operacion solo si se
+        # intenta tocar otra cuenta administrativa desde una sesion no autorizada,
+        # pero como la regla anterior ya bloqueo los perfiles no administradores,
+        # esta validacion evita contraejemplos futuros y mantiene la semantica de
+        # seguridad por defecto.
+        if usuario_destino is not None and usuario_destino.rol == "administrador":
+            if actor is None or getattr(actor, "rol", None) != "administrador":
+                raise ErrorDominio(
+                    RepositorioUsuario.MENSAJE_SEGURIDAD_ADMIN
+                )
 
     # ---------- Create ----------
 

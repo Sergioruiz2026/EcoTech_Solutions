@@ -98,6 +98,77 @@ AUTORIZACION
   Cada rol tiene un conjunto de permisos declarado en un unico lugar. El menu
   los comprueba antes de ejecutar cualquier operacion.
 
+MODULO DE GESTION DE USUARIOS Y ROLES (RBAC)
+  La aplicacion administra cuentas de acceso desde un repositorio central de
+  usuarios, donde cada cuenta tiene nombre de usuario, rol, empleado asociado,
+  estado de bloqueo y bandera de cambio obligatorio de clave.
+
+  Los roles implementados son administrador, gerente y operador, con permisos
+  distintos definidos en modelos/usuario.py:
+
+    * administrador: acceso completo a gestion de usuarios, consulta de salarios,
+      generacion de informes, aprobacion de jornadas y consultas externas.
+    * gerente: puede gestionar datos, aprobar jornadas, generar informes,
+      consultar salarios y crear o modificar usuarios en el sistema.
+    * operador: solo puede consultar informacion y generar informes basicos.
+
+  La gestion de usuarios solo esta disponible para cuentas con el permiso
+  gestionar_usuarios. Desde ese menu se permite:
+
+    * listar usuarios registrados y su estado de bloqueo,
+    * crear cuentas con validacion de clave y rol,
+    * cambiar la contraseña de otra cuenta,
+    * modificar el rol del usuario,
+    * eliminar cuentas no asociadas a la sesion actual.
+
+  La recuperacion o restablecimiento de clave temporal se implementa como un
+  flujo de seguridad: si una clave fue reformulada por administracion o se marca
+  como obligatoria, el usuario no puede seguir usando la sesion hasta definir una
+  nueva contraseña. El cambio se realiza validando la clave actual, confirmando
+  la nueva clave y revisando la complejidad exigida por la politica del sistema.
+
+  La asignacion del rol Administrador queda restringida a la autorizacion de una
+  cuenta ya existente con permisos de gestion. Es decir, nadie puede autoproclamarse
+  administrador desde el registro publico; la creacion de perfiles con permisos
+  avanzados requiere la autenticacion de un gerente o administrador valido, con
+  verificacion previa del permiso gestionar_usuarios.
+
+FLUJO DE AUTENTICACION Y SEGURIDAD
+  El inicio de sesion valida usuario y clave usando hashes PBKDF2 con sal por
+  cuenta, y se compara mediante hmac.compare_digest para evitar fugas por tiempo.
+  El sistema admite tres intentos fallidos por ciclo; si se excede ese limite,
+  la cuenta queda bloqueada temporalmente durante un periodo creciente basado en
+  el numero de bloqueos anteriores. Ese estado se conserva durante la ejecucion
+  y aparece en la visualizacion de usuarios.
+
+  Cuando una cuenta tiene una clave temporal o se le exige cambio de contraseña,
+  el programa fuerza el cambio obligatorio antes de permitir el uso normal del
+  sistema. El usuario debe ingresar la contraseña actual, escribir la nueva clave
+  dos veces y cumplir la validacion de seguridad antes de continuar.
+
+  Adicionalmente, la auditoria registra accesos validos e invalidos, bloqueos
+  temporales y errores de dominio en ecotech.log para dejar trazabilidad sin
+  exponer detalles internos al usuario final.
+
+ENMASCARAMIENTO DE DATOS EN INFORMES (DATA MASKING)
+  Los informes PDF y Excel usan la capa de validacion para aplicar enmascaramiento
+  de datos sensibles segun el rol del usuario que genera el reporte.
+
+  La funcion usuario_puede_ver_salarios() permite distinguir entre usuarios con
+  permisos de salario (gerentes y administradores) y perfiles con menos alcance.
+  En informes, las columnas de salario y correo se procesan con:
+
+    * formatear_salario_informe(): devuelve el monto real para gerente o
+      administrador, y oculta el valor con asteriscos para usuarios sin permiso.
+    * formatear_correo_informe(): muestra el correo completo para usuarios con
+      permisos suficientes; para perfiles restringidos, solo expone un correo
+      parcialmente enmascarado, preservando la identidad sin revelar el dato
+      completo.
+
+  De este modo, el mismo informe puede reutilizarse para distintos perfiles sin
+  filtrar el contenido manualmente: los roles con mayor privilegio reciben datos
+  completos y los roles operativos ven una representacion segura y legible.
+
 VALIDACION DE ENTRADAS
   Todo dato que entra al sistema pasa por seguridad/validaciones.py, que
   verifica tipo, rango, longitud y formato mediante expresiones regulares.
@@ -163,17 +234,27 @@ Desde la carpeta del proyecto:
 
        python -m unittest discover -s tests -t .
 
-Debe terminar con "OK" y 8 pruebas ejecutadas. No requiere instalar pytest ni
-ninguna otra herramienta: usa el modulo unittest de la biblioteca estandar.
+Tambien es posible ejecutar una prueba puntual, por ejemplo:
+
+       python -m unittest tests.test_registrar_prompt
+       python -m unittest tests.test_registro_tiempo
+       python -m unittest tests.test_salario_convertido
+
+Debe terminar con "OK" y la cantidad de pruebas esperadas. El proyecto usa
+unittest de la biblioteca estandar, sin dependencias externas ni pytest.
 
 Que cubren:
 
-  test_registro_tiempo.py     Aprobacion parcial de jornadas y horas extras
-  test_salario_convertido.py  Conversion de salario y permiso ver_salarios
-  test_api_externa.py         Respuestas de las APIs simuladas, sin internet
+  test_registro_tiempo.py         Aprobacion parcial de jornadas y horas extras
+  test_salario_convertido.py      Conversion de salario y permiso ver_salarios
+  test_api_externa.py             Respuestas de las APIs simuladas, sin internet
+  test_informes_masking.py        Enmascaramiento de salarios y correos en PDF/Excel
+  test_registrar_prompt.py        Registro de prompts con archivo temporal seguro
 
 Las pruebas de la API no usan conexion: simulan cada codigo de respuesta HTTP
-con unittest.mock, de modo que corren igual sin acceso a internet.
+con unittest.mock, de modo que corren igual sin acceso a internet. Las pruebas
+que validan informes y auditoria mantienen la salida consistente con los permisos
+de cada rol.
 
 
 ===============================================================================

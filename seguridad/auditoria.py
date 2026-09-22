@@ -30,15 +30,35 @@ def registrar_evento(mensaje):
     _registro.info(mensaje)
 
 
-def registrar_prompt(prompt, herramienta="No especificada", decision="Pendiente"):
-    """Agrega un prompt al registro documental de uso de IA."""
-    texto = " ".join(str(prompt).split()).replace("|", "\\|")
-    herramienta = " ".join(str(herramienta).split()).replace("|", "\\|")
-    decision = " ".join(str(decision).split()).replace("|", "\\|")
-    fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def _sanear_markdown(texto):
+    """Normaliza el texto para evitar romper tablas Markdown."""
+    if texto is None:
+        return ""
+    texto = str(texto).replace("\\r\\n", "\\n").replace("\\r", "\\n")
+    texto = texto.replace("|", "\\|")
+    texto = " ".join(texto.replace("\\n", " ").split())
+    return texto
 
-    with RUTA_USO_IA.open("a", encoding="utf-8") as archivo:
-        archivo.write(f"| {fecha} | {herramienta} | {texto} | {decision} |\n")
+
+def registrar_prompt(prompt, herramienta="No especificada", respuesta="Pendiente",
+                    *, fase="No especificada", ruta_archivo=None, decision=None):
+    """Agrega un prompt al registro documental de uso de IA."""
+    if decision is not None:
+        respuesta = decision
+
+    fase = _sanear_markdown(fase)
+    herramienta = _sanear_markdown(herramienta)
+    texto = _sanear_markdown(prompt)
+    respuesta = _sanear_markdown(respuesta)
+
+    fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    archivo_destino = Path(ruta_archivo) if ruta_archivo is not None else RUTA_USO_IA
+    archivo_destino.parent.mkdir(parents=True, exist_ok=True)
+
+    with archivo_destino.open("a", encoding="utf-8") as archivo:
+        archivo.write(
+            f"| {fecha} | {fase} | {herramienta} | {texto} | {respuesta} |\n"
+        )
         archivo.flush()
         os.fsync(archivo.fileno())
 
