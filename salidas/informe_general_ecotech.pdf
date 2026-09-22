@@ -1,0 +1,96 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 1799 >>
+stream
+BT
+/F1 10 Tf
+50 780 Td
+14 TL
+(ECOTECH SOLUTIONS) Tj
+0 -14 Td
+(Informe general EcoTech) Tj
+0 -14 Td
+(Emitido: 2026-09-21 | Formato: PDF) Tj
+0 -14 Td
+() Tj
+0 -14 Td
+(Departamentos \(2\)) Tj
+0 -14 Td
+(  2: Mantencion) Tj
+0 -14 Td
+(  1: Operaciones) Tj
+0 -14 Td
+() Tj
+0 -14 Td
+(Empleados \(5\)) Tj
+0 -14 Td
+(  1: Andres Munoz Pino | andres.munoz@ecotech.cl | Operaciones | Salario: $ *******) Tj
+0 -14 Td
+(  2: Camila Rojas Vergara | camila.rojas@ecotech.cl | Operaciones | Salario: $ *******) Tj
+0 -14 Td
+(  3: Luis Farias Soto | luis.farias@ecotech.cl | Operaciones | Salario: $ *******) Tj
+0 -14 Td
+(  4: Paula Ibarra Leon | paula.ibarra@ecotech.cl | Mantencion | Salario: $ *******) Tj
+0 -14 Td
+(  5: mario diaz | mario@gmil.com | Mantencion | Salario: $ *******) Tj
+0 -14 Td
+() Tj
+0 -14 Td
+(Proyectos \(2\)) Tj
+0 -14 Td
+(  2: Bodega Placilla | inicio 2026-05-18) Tj
+0 -14 Td
+(  1: Planta Solar Quillota | inicio 2026-03-02) Tj
+0 -14 Td
+() Tj
+0 -14 Td
+(Registros de horas \(6\)) Tj
+0 -14 Td
+(----------------------------------------------------) Tj
+0 -14 Td
+(  2026-04-15    8.0 h  Camila Rojas Vergara | Planta Solar Quillota  [OK]) Tj
+0 -14 Td
+(  2026-04-16    7.5 h  Camila Rojas Vergara | Planta Solar Quillota  [OK]) Tj
+0 -14 Td
+(  2026-04-16    6.0 h  Luis Farias Soto | Planta Solar Quillota  [OK]) Tj
+0 -14 Td
+(  2026-04-17   13.0 h  Luis Farias Soto | Planta Solar Quillota  [parcial 12/13 h \(1 h extra por aprobar\)]) Tj
+0 -14 Td
+(  2026-05-20    8.0 h  Paula Ibarra Leon | Bodega Placilla  [OK]) Tj
+0 -14 Td
+(  2026-09-21   15.0 h  mario diaz | Bodega Placilla  [pendiente]) Tj
+0 -14 Td
+(----------------------------------------------------) Tj
+0 -14 Td
+(  TOTAL registrado: 57.5 horas \(4 h extras\)) Tj
+0 -14 Td
+(  TOTAL aprobado:   41.5 horas \(0 h extra por aprobar\)) Tj
+0 -14 Td
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2162
+%%EOF

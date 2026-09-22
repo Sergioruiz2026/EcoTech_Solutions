@@ -1,0 +1,23 @@
+# EcoTech Solutions - dependencias del proyecto
+#
+# Este proyecto NO requiere instalar ninguna libreria externa.
+# Funciona unicamente con la biblioteca estandar de Python 3.10 o superior.
+#
+# Modulos estandar utilizados:
+#
+#   sqlite3    Conexion y operaciones sobre la base de datos
+#   urllib     Consumo de las APIs externas por HTTP
+#   json       Lectura de las respuestas de las APIs y respaldo local
+#   hashlib    Resumen SHA-256 de las contraseñas
+#   hmac       Comparacion en tiempo constante de los resumenes
+#   secrets    Generacion de la sal aleatoria
+#   getpass    Lectura de la clave sin mostrarla en pantalla
+#   logging    Registro de accesos y errores
+#   re         Expresiones regulares para la validacion de entradas
+#   abc        Clases abstractas de la jerarquia de informes
+#   datetime   Manejo de fechas
+#   pathlib    Rutas de archivos
+#
+# Se eligio urllib en lugar de requests precisamente para evitar dependencias
+# externas: el proyecto se ejecuta en cualquier equipo con Python instalado,
+# sin pasos previos de instalacion.

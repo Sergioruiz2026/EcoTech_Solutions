@@ -1,0 +1,60 @@
+2026-09-21 10:59:46 | INFO     | ACCESO CONCEDIDO | usuario=amunoz
+2026-09-21 11:01:19 | ERROR    | Consulta a servicio externo | ErrorApiExterna: La ciudad no coincide con el pais indicado.
+2026-09-21 11:09:37 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 11:09:46 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 11:09:47 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 11:09:47 | WARNING  | BLOQUEO TEMPORAL | usuario=usuario desconocido | duracion=30 segundos
+2026-09-21 11:10:01 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 11:10:06 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 11:10:57 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 11:11:06 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 11:11:14 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 11:11:14 | WARNING  | BLOQUEO TEMPORAL | usuario=usuario desconocido | duracion=60 segundos
+2026-09-21 11:12:34 | INFO     | ACCESO CONCEDIDO | usuario=amunoz
+2026-09-21 11:38:33 | INFO     | USUARIO CREADO | administrador=amunoz | usuario=sergio | rol=administrador
+2026-09-21 11:38:51 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-21 12:32:07 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-21 12:33:39 | INFO     | USUARIO CREADO | administrador=sergio | usuario=pedro | rol=operador
+2026-09-21 12:34:24 | INFO     | ACCESO CONCEDIDO | usuario=pedro
+2026-09-21 12:44:02 | INFO     | ACCESO CONCEDIDO | usuario=pedro
+2026-09-21 12:44:58 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-21 13:34:44 | INFO     | ACCESO DENEGADO | usuario=sergio
+2026-09-21 13:34:53 | INFO     | ACCESO DENEGADO | usuario=sergio
+2026-09-21 13:34:59 | INFO     | ACCESO DENEGADO | usuario=sergio
+2026-09-21 13:34:59 | WARNING  | BLOQUEO TEMPORAL | usuario=sergio | duracion=30 segundos
+2026-09-21 13:39:32 | INFO     | ACCESO DENEGADO | usuario=ana
+2026-09-21 13:39:32 | INFO     | ACCESO DENEGADO | usuario=ana
+2026-09-21 13:39:32 | INFO     | ACCESO DENEGADO | usuario=ana
+2026-09-21 13:39:32 | WARNING  | BLOQUEO TEMPORAL | usuario=ana | duracion=30 segundos
+2026-09-21 13:39:52 | INFO     | ACCESO DENEGADO | usuario=ana
+2026-09-21 13:39:52 | INFO     | ACCESO DENEGADO | usuario=ana
+2026-09-21 13:39:52 | INFO     | ACCESO DENEGADO | usuario=ana
+2026-09-21 13:39:52 | WARNING  | BLOQUEO TEMPORAL | usuario=ana | duracion=30 segundos
+2026-09-21 13:41:05 | INFO     | ACCESO DENEGADO | usuario=sergio
+2026-09-21 13:41:08 | INFO     | ACCESO DENEGADO | usuario=sergio
+2026-09-21 13:41:10 | INFO     | ACCESO DENEGADO | usuario=sergio
+2026-09-21 13:41:10 | WARNING  | BLOQUEO TEMPORAL | usuario=sergio | duracion=30 segundos
+2026-09-21 13:41:55 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 13:41:59 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 13:42:01 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 13:42:01 | WARNING  | BLOQUEO TEMPORAL | usuario=usuario desconocido | duracion=30 segundos
+2026-09-21 13:42:20 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 13:42:22 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 13:42:23 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-21 13:42:23 | WARNING  | BLOQUEO TEMPORAL | usuario=usuario desconocido | duracion=30 segundos
+2026-09-21 13:42:37 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-21 13:46:28 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-21 13:55:50 | INFO     | ACCESO DENEGADO | usuario=sergio
+2026-09-21 13:55:55 | INFO     | ACCESO DENEGADO | usuario=sergio
+2026-09-21 13:56:16 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-21 13:58:19 | INFO     | USUARIO CREADO | administrador=sergio | usuario=loreto | rol=operador
+2026-09-21 13:59:20 | INFO     | ACCESO CONCEDIDO | usuario=loreto
+2026-09-21 14:05:26 | INFO     | ACCESO CONCEDIDO | usuario=loreto
+2026-09-21 14:06:03 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-21 14:07:08 | INFO     | ACCESO CONCEDIDO | usuario=loreto
+2026-09-21 18:30:35 | INFO     | ACCESO DENEGADO | usuario=loreto
+2026-09-21 18:30:40 | INFO     | ACCESO DENEGADO | usuario=loreto
+2026-09-21 18:30:42 | INFO     | ACCESO DENEGADO | usuario=loreto
+2026-09-21 18:30:42 | WARNING  | BLOQUEO TEMPORAL | usuario=loreto | duracion=30 segundos
+2026-09-21 18:31:01 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-21 18:34:25 | INFO     | ACCESO CONCEDIDO | usuario=loreto

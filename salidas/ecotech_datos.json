@@ -1,0 +1,162 @@
+{
+  "departamentos": [
+    {
+      "id": 2,
+      "nombre": "Mantencion"
+    },
+    {
+      "id": 1,
+      "nombre": "Operaciones"
+    }
+  ],
+  "empleados": [
+    {
+      "id": 1,
+      "nombre": "Andres Munoz Pino",
+      "correo": "andres.munoz@ecotech.cl",
+      "salario": 1650000.0,
+      "departamento": 1
+    },
+    {
+      "id": 2,
+      "nombre": "Camila Rojas Vergara",
+      "correo": "camila.rojas@ecotech.cl",
+      "salario": 950000.0,
+      "departamento": 1
+    },
+    {
+      "id": 3,
+      "nombre": "Luis Farias Soto",
+      "correo": "luis.farias@ecotech.cl",
+      "salario": 880000.0,
+      "departamento": 1
+    },
+    {
+      "id": 4,
+      "nombre": "Paula Ibarra Leon",
+      "correo": "paula.ibarra@ecotech.cl",
+      "salario": 1010000.0,
+      "departamento": 2
+    },
+    {
+      "id": 6,
+      "nombre": "loreto",
+      "correo": "loreto@ecotech.cl",
+      "salario": 2000000.0,
+      "departamento": 2
+    },
+    {
+      "id": 5,
+      "nombre": "mario diaz",
+      "correo": "mario@gmil.com",
+      "salario": 780000.0,
+      "departamento": 2
+    }
+  ],
+  "proyectos": [
+    {
+      "id": 2,
+      "nombre": "Bodega Placilla",
+      "descripcion": "Automatizacion del sistema de pesaje",
+      "fecha_inicio": "2026-05-18"
+    },
+    {
+      "id": 1,
+      "nombre": "Planta Solar Quillota",
+      "descripcion": "Instalacion de paneles fotovoltaicos",
+      "fecha_inicio": "2026-03-02"
+    }
+  ],
+  "registros_horas": [
+    {
+      "id": 1,
+      "fecha": "2026-04-15",
+      "horas": 8.0,
+      "horas_normales": 8.0,
+      "horas_extras": 0,
+      "horas_extras_por_aprobar": 0,
+      "horas_aprobadas": 8.0,
+      "horas_pendientes": 0.0,
+      "estado": "aprobado",
+      "aprobado": true,
+      "empleado_id": 2,
+      "proyecto_id": 1,
+      "descripcion": "Montaje de estructura"
+    },
+    {
+      "id": 2,
+      "fecha": "2026-04-16",
+      "horas": 7.5,
+      "horas_normales": 7.5,
+      "horas_extras": 0,
+      "horas_extras_por_aprobar": 0,
+      "horas_aprobadas": 7.5,
+      "horas_pendientes": 0.0,
+      "estado": "aprobado",
+      "aprobado": true,
+      "empleado_id": 2,
+      "proyecto_id": 1,
+      "descripcion": "Cableado de paneles"
+    },
+    {
+      "id": 3,
+      "fecha": "2026-04-16",
+      "horas": 6.0,
+      "horas_normales": 6.0,
+      "horas_extras": 0,
+      "horas_extras_por_aprobar": 0,
+      "horas_aprobadas": 6.0,
+      "horas_pendientes": 0.0,
+      "estado": "aprobado",
+      "aprobado": true,
+      "empleado_id": 3,
+      "proyecto_id": 1,
+      "descripcion": "Instalacion electrica"
+    },
+    {
+      "id": 4,
+      "fecha": "2026-04-17",
+      "horas": 13.0,
+      "horas_normales": 12,
+      "horas_extras": 1.0,
+      "horas_extras_por_aprobar": 1.0,
+      "horas_aprobadas": 12.0,
+      "horas_pendientes": 1.0,
+      "estado": "parcial",
+      "aprobado": false,
+      "empleado_id": 3,
+      "proyecto_id": 1,
+      "descripcion": "Turno extendido"
+    },
+    {
+      "id": 5,
+      "fecha": "2026-05-20",
+      "horas": 8.0,
+      "horas_normales": 8.0,
+      "horas_extras": 0,
+      "horas_extras_por_aprobar": 0,
+      "horas_aprobadas": 8.0,
+      "horas_pendientes": 0.0,
+      "estado": "aprobado",
+      "aprobado": true,
+      "empleado_id": 4,
+      "proyecto_id": 2,
+      "descripcion": "Calibracion de balanzas"
+    },
+    {
+      "id": 6,
+      "fecha": "2026-09-21",
+      "horas": 15.0,
+      "horas_normales": 12,
+      "horas_extras": 3.0,
+      "horas_extras_por_aprobar": 3.0,
+      "horas_aprobadas": 0.0,
+      "horas_pendientes": 15.0,
+      "estado": "pendiente",
+      "aprobado": false,
+      "empleado_id": 5,
+      "proyecto_id": 2,
+      "descripcion": "su labor fue registrar prueba de sistemas"
+    }
+  ]
+}
