@@ -74,6 +74,26 @@ def pedir(mensaje, validador, valor_actual=None, obligatorio=True):
             print(f"     {error.mensaje} Intentelo nuevamente.")
 
 
+def leer_opcion(mensaje, opciones=None):
+    """Lee una opcion numerica desde teclado y valida el contenido.
+
+    Rechaza letras, vacios y valores fuera del conjunto permitido con un
+    mensaje seguro y uniforme para todos los menues del sistema.
+    """
+    while True:
+        entrada = input(mensaje).strip()
+        if not entrada or not entrada.isdigit():
+            print("  Ingrese solo numeros y no letras.")
+            return None
+
+        opcion = int(entrada)
+        if opciones is not None and opcion not in opciones:
+            print("  Por favor, coloque la opcion correcta.")
+            return None
+
+        return opcion
+
+
 def cargar_departamento_completo(id_departamento, repo_departamentos, repo_empleados):
     """Arma un Departamento con su personal cargado desde la base."""
     departamento = repo_departamentos.buscar_por_id(id_departamento)
@@ -425,22 +445,24 @@ def menu_usuarios(sesion, repo_usuarios):
         print("  4. Eliminar usuario")
         print("  5. Cambiar contraseña")
         print("  0. Volver")
-        opcion = input("  Seleccione una opcion: ").strip()
+        opcion = leer_opcion("  Seleccione una opcion: ")
+        if opcion is None:
+            continue
         try:
-            if opcion == "1":
+            if opcion == 1:
                 mostrar_usuarios(repo_usuarios)
-            elif opcion == "2":
+            elif opcion == 2:
                 registrar_nuevo_usuario(repo_usuarios, sesion)
-            elif opcion == "3":
+            elif opcion == 3:
                 modificar_usuario(repo_usuarios, sesion)
-            elif opcion == "4":
+            elif opcion == 4:
                 eliminar_usuario(repo_usuarios, sesion)
-            elif opcion == "5":
+            elif opcion == 5:
                 cambiar_contrasena_usuario(repo_usuarios)
-            elif opcion == "0":
+            elif opcion == 0:
                 return
             else:
-                print("  Opcion no valida.")
+                print("  Por favor, coloque la opcion correcta.")
         except ErrorDominio as error:
             registrar_fallo(f"Gestion de usuarios opcion {opcion}", error)
             print(f"  {mensaje_seguro(error)}")
@@ -456,25 +478,27 @@ def iniciar_sesion(repo_usuarios, intentos_maximos=3):
         print("  1. Ingresar con usuario")
         print("  2. Registrar nuevo usuario")
         print("  0. Salir")
-        opcion = input("  Seleccione una opcion: ").strip()
+        opcion = leer_opcion("  Seleccione una opcion: ")
+        if opcion is None:
+            continue
 
-        if opcion == "1":
+        if opcion == 1:
             sesion = autenticar_usuario(repo_usuarios, intentos_maximos)
             if sesion is not None:
                 if (sesion.debe_cambiar_clave
                         and not completar_cambio_obligatorio(repo_usuarios, sesion)):
                     continue
                 return sesion
-        elif opcion == "2":
+        elif opcion == 2:
             try:
                 registrar_nuevo_usuario(repo_usuarios)
             except ErrorDominio as error:
                 registrar_fallo("Registro de usuario", error)
                 print(f"  {mensaje_seguro(error)}")
-        elif opcion == "0":
+        elif opcion == 0:
             return None
         else:
-            print("  Opcion no valida.")
+            print("  Por favor, coloque la opcion correcta.")
 
 
 def mostrar_historial_consultas(repo_consultas):
@@ -556,24 +580,28 @@ def consultar_servicios_externos(sesion, repo_empleados, repo_consultas):
         print("  Esta cuenta no tiene permiso para consultar servicios externos.")
         return
 
-    titulo("6. Consultas externas para planificacion")
-    print("  1. Consultar clima y tipo de cambio")
-    print("  2. Ver historial de consultas")
-    if sesion.tiene_permiso("ver_salarios"):
-        print("  3. Convertir salario a otra moneda")
-    print("  0. Volver")
-    opcion = input("  Seleccione una opcion: ").strip()
-    if opcion == "2":
-        mostrar_historial_consultas(repo_consultas)
-        return
-    if opcion == "3":
-        consultar_salario_convertido(sesion, repo_empleados, repo_consultas)
-        return
-    if opcion == "0":
-        return
-    if opcion != "1":
-        print("  Opcion no valida.")
-        return
+    while True:
+        titulo("6. Consultas externas para planificacion")
+        print("  1. Consultar clima y tipo de cambio")
+        print("  2. Ver historial de consultas")
+        if sesion.tiene_permiso("ver_salarios"):
+            print("  3. Convertir salario a otra moneda")
+        print("  0. Volver")
+        opcion = leer_opcion("  Seleccione una opcion: ")
+        if opcion is None:
+            continue
+        if opcion == 2:
+            mostrar_historial_consultas(repo_consultas)
+            return
+        if opcion == 3:
+            consultar_salario_convertido(sesion, repo_empleados, repo_consultas)
+            return
+        if opcion == 0:
+            return
+        if opcion != 1:
+            print("  Por favor, coloque la opcion correcta.")
+            continue
+        break
 
     ciudad = pedir("  Ciudad [Quillota]: ",
                    lambda x: v.validar_nombre(x, "La ciudad"), "Quillota")
@@ -900,29 +928,31 @@ def menu_entidad(sesion, nombre, crear, mostrar, actualizar, eliminar, consultar
             print("  4. Eliminar")
             print("  5. Consultar")
         print("  0. Volver")
-        opcion = input("  Seleccione una opcion: ").strip()
+        opcion = leer_opcion("  Seleccione una opcion: ")
+        if opcion is None:
+            continue
         try:
-            if solo_consulta and opcion == "1":
+            if solo_consulta and opcion == 1:
                 mostrar()
-            elif solo_consulta and opcion == "2":
+            elif solo_consulta and opcion == 2:
                 consultar()
-            elif not solo_consulta and opcion == "1":
+            elif not solo_consulta and opcion == 1:
                 crear()
                 sincronizar()
-            elif not solo_consulta and opcion == "2":
+            elif not solo_consulta and opcion == 2:
                 mostrar()
-            elif not solo_consulta and opcion == "3":
+            elif not solo_consulta and opcion == 3:
                 actualizar()
                 sincronizar()
-            elif not solo_consulta and opcion == "4":
+            elif not solo_consulta and opcion == 4:
                 eliminar()
                 sincronizar()
-            elif not solo_consulta and opcion == "5":
+            elif not solo_consulta and opcion == 5:
                 consultar()
-            elif opcion == "0":
+            elif opcion == 0:
                 return
             else:
-                print("  Opcion no valida.")
+                print("  Por favor, coloque la opcion correcta.")
         except ErrorDominio as error:
             registrar_fallo(f"Operacion '{nombre}' opcion {opcion}", error)
             print(f"  {mensaje_seguro(error)}")
@@ -938,7 +968,7 @@ def generar_informes(sesion, repo_departamentos, repo_proyectos,
     if not sesion.tiene_permiso("generar_informes"):
         print("  La sesion no tiene permiso para generar informes.")
         return
-    
+
     datos = {
         "departamentos": repo_departamentos.listar(),
         "empleados": repo_empleados.listar(),
@@ -958,15 +988,17 @@ def generar_informes(sesion, repo_departamentos, repo_proyectos,
     print("  1. PDF")
     print("  2. Excel")
     print("  0. No exportar")
-    opcion = input("  Seleccione una opcion: ").strip()
+    opcion = leer_opcion("  Seleccione una opcion: ")
+    if opcion is None:
+        return
 
     informes = {
-        "1": [informe_pdf],
-        "2": [informe_excel],
+        1: [informe_pdf],
+        2: [informe_excel],
     }.get(opcion, [])
 
-    if opcion not in {"0", "1", "2"}:
-        print("  Opcion no valida. No se exporto el informe.")
+    if opcion not in {0, 1, 2}:
+        print("  Por favor, coloque la opcion correcta. No se exporto el informe.")
         return
 
     for informe in informes:
@@ -998,8 +1030,10 @@ def menu_principal(
         else:
             print("  6. Cambiar de usuario")
         print("  0. Salir del programa")
-        opcion = input("  Seleccione una opcion: ").strip()
-        if opcion == "1":
+        opcion = leer_opcion("  Seleccione una opcion: ")
+        if opcion is None:
+            continue
+        if opcion == 1:
             menu_entidad(
                 sesion, "Empleados",
                 lambda: crear_empleado(repo_empleados, repo_departamentos),
@@ -1010,7 +1044,7 @@ def menu_principal(
                     lambda: mostrar_empleados(repo_empleados, sesion)),
                 lambda: consultar_empleado(repo_empleados, sesion), sincronizar,
                 solo_consulta)
-        elif opcion == "2":
+        elif opcion == 2:
             menu_entidad(
                 sesion, "Proyectos", lambda: crear_proyecto(repo_proyectos),
                 lambda: mostrar_proyectos(repo_proyectos),
@@ -1018,7 +1052,7 @@ def menu_principal(
                 lambda: eliminar_dato(repo_proyectos, "proyecto", mostrar_proyectos),
                 lambda: consultar_proyecto(repo_proyectos), sincronizar,
                 solo_consulta)
-        elif opcion == "3":
+        elif opcion == 3:
             menu_entidad(
                 sesion, "Departamentos", lambda: crear_departamento(repo_departamentos),
                 lambda: mostrar_departamentos(repo_departamentos),
@@ -1027,7 +1061,7 @@ def menu_principal(
                     repo_departamentos, "departamento", mostrar_departamentos),
                 lambda: consultar_departamento(repo_departamentos), sincronizar,
                 solo_consulta)
-        elif opcion == "4":
+        elif opcion == 4:
             menu_entidad(
                 sesion, "Registros de horas",
                 lambda: crear_registro(
@@ -1037,21 +1071,21 @@ def menu_principal(
                 lambda: eliminar_dato(repo_registros, "registro", mostrar_registros),
                 lambda: consultar_registro(repo_registros), sincronizar,
                 solo_consulta)
-        elif opcion == "5":
+        elif opcion == 5:
             generar_informes(
                 sesion, repo_departamentos, repo_proyectos, repo_empleados,
                 repo_registros, planta)
-        elif opcion == "6" and not solo_consulta:
+        elif opcion == 6 and not solo_consulta:
             consultar_servicios_externos(sesion, repo_empleados, repo_consultas)
-        elif opcion == "7" and not solo_consulta and sesion.tiene_permiso("gestionar_usuarios"):
+        elif opcion == 7 and not solo_consulta and sesion.tiene_permiso("gestionar_usuarios"):
             menu_usuarios(sesion, repo_usuarios)
-        elif opcion == ("6" if solo_consulta else
-                        ("8" if sesion.tiene_permiso("gestionar_usuarios") else "7")):
+        elif opcion == (6 if solo_consulta else
+                        (8 if sesion.tiene_permiso("gestionar_usuarios") else 7)):
             return "cambiar_usuario"
-        elif opcion == "0":
+        elif opcion == 0:
             return "salir"
         else:
-            print("  Opcion no valida.")
+            print("  Por favor, coloque la opcion correcta.")
 
 
 def main():
