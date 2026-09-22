@@ -3,6 +3,8 @@ import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
 
+from main import consultar_servicios_externos, menu_principal
+from modelos.usuario import Usuario
 from servicios.api_externa import ClienteApisExternas, ErrorApiExterna
 
 
@@ -102,6 +104,64 @@ class TestClienteApisExternas(unittest.TestCase):
             resultado = ClienteApisExternas.consultar_clima("Lima", "Peru")
 
         self.assertEqual(resultado["pais"], "Per\u00fa")
+
+    def test_operador_tiene_permiso_de_consultas_externas(self):
+        usuario = Usuario("operador1", "ClaveSegura1", "operador")
+        self.assertTrue(usuario.tiene_permiso("consultar_externos"))
+
+    def test_menu_muestra_consultas_externas_para_operador(self):
+        usuario = Usuario("operador1", "ClaveSegura1", "operador")
+        with patch("main.leer_opcion", return_value=0), \
+                patch("sys.stdout") as stdout:
+            respuesta = menu_principal(
+                usuario, None, None, None, None, None, None, None)
+
+        self.assertEqual(respuesta, "salir")
+        salida = "\n".join(call.args[0] for call in stdout.write.call_args_list)
+        self.assertIn("Consultas externas", salida)
+
+    def test_submenu_consultas_externas_vuelve_al_menu_despues_de_historial(self):
+        usuario = Usuario("operador1", "ClaveSegura1", "operador")
+        repo_consultas = object()
+
+        with patch("main.leer_opcion", side_effect=[2, 0]), \
+                patch("main.mostrar_historial_consultas") as mostrar_historial, \
+                patch("sys.stdout"):
+            consultar_servicios_externos(usuario, None, repo_consultas)
+
+        self.assertEqual(mostrar_historial.call_count, 1)
+        mostrar_historial.assert_called_once_with(repo_consultas)
+
+    def test_consultas_externas_muestra_ubicacion_detectada(self):
+        usuario = Usuario("operador1", "ClaveSegura1", "operador")
+
+        class RepoConsultasFake:
+            def crear(self, *args, **kwargs):
+                return None
+
+        repo_consultas = RepoConsultasFake()
+
+        with patch("main.ClienteApisExternas.consultar_ubicacion_ip",
+                   return_value={"ciudad": "Santiago", "pais": "Chile"}), \
+                patch("main.leer_opcion", side_effect=[1, 0]), \
+                patch("main.pedir", side_effect=["Santiago", "Chile", "USD", "CLP"]) as pedir_mock, \
+                patch("main.ClienteApisExternas.consultar_clima",
+                      return_value={
+                          "temperatura": 23.9,
+                          "humedad": 51,
+                          "estado_tiempo": "Despejado",
+                          "codigo_climatico": 0,
+                          "alerta": None,
+                      }), \
+                patch("main.ClienteApisExternas.consultar_tipo_cambio",
+                      return_value={"origen": "USD", "destino": "CLP", "tipo_cambio": 959.45}), \
+                patch("sys.stdout") as stdout:
+            consultar_servicios_externos(usuario, None, repo_consultas)
+
+        salida = "\n".join(call.args[0] for call in stdout.write.call_args_list)
+        self.assertIn("Ubicacion detectada: Santiago, Chile", salida)
+        self.assertEqual(pedir_mock.call_args_list[0].args[2], "Santiago")
+        self.assertEqual(pedir_mock.call_args_list[1].args[2], "Chile")
 
 
 if __name__ == "__main__":

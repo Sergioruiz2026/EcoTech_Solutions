@@ -574,11 +574,31 @@ def consultar_salario_convertido(sesion, repo_empleados, repo_consultas):
         print("  No fue posible convertir el salario en este momento.")
 
 
+def detectar_ubicacion_usuario():
+    """Intenta geolocalizar la ubicacion del usuario a partir de su IP."""
+    try:
+        ubicacion = ClienteApisExternas.consultar_ubicacion_ip()
+        ciudad = (ubicacion or {}).get("ciudad")
+        pais = (ubicacion or {}).get("pais")
+        if ciudad and pais:
+            print(f"  Ubicacion detectada: {ciudad}, {pais}")
+            return ciudad, pais
+    except (ErrorApiExterna, ValueError, TypeError):
+        pass
+    except Exception:
+        pass
+    return None, None
+
+
 def consultar_servicios_externos(sesion, repo_empleados, repo_consultas):
     """Consulta servicios externos o muestra su historial."""
     if not sesion.tiene_permiso("consultar_externos"):
         print("  Esta cuenta no tiene permiso para consultar servicios externos.")
         return
+
+    ciudad_default, pais_default = detectar_ubicacion_usuario()
+    ciudad_default = ciudad_default or "Quillota"
+    pais_default = pais_default or "Chile"
 
     while True:
         titulo("6. Consultas externas para planificacion")
@@ -590,54 +610,57 @@ def consultar_servicios_externos(sesion, repo_empleados, repo_consultas):
         opcion = leer_opcion("  Seleccione una opcion: ")
         if opcion is None:
             continue
+
         if opcion == 2:
             mostrar_historial_consultas(repo_consultas)
-            return
+            continue
         if opcion == 3:
             consultar_salario_convertido(sesion, repo_empleados, repo_consultas)
-            return
+            continue
         if opcion == 0:
             return
         if opcion != 1:
             print("  Por favor, coloque la opcion correcta.")
             continue
-        break
 
-    ciudad = pedir("  Ciudad [Quillota]: ",
-                   lambda x: v.validar_nombre(x, "La ciudad"), "Quillota")
-    pais = pedir("  Pais [Chile]: ",
-                 lambda x: v.validar_nombre(x, "El pais"), "Chile")
-    moneda_origen = pedir("  Moneda de origen [USD]: ",
-                          lambda x: v.validar_codigo_moneda(x, "La moneda"), "USD")
-    moneda_destino = pedir("  Moneda de destino [CLP]: ",
-                           lambda x: v.validar_codigo_moneda(x, "La moneda"), "CLP")
+        ciudad = pedir(f"  Ciudad [{ciudad_default}]: ",
+                       lambda x: v.validar_nombre(x, "La ciudad"), ciudad_default)
+        pais = pedir(f"  Pais [{pais_default}]: ",
+                     lambda x: v.validar_nombre(x, "El pais"), pais_default)
+        moneda_origen = pedir("  Moneda de origen [USD]: ",
+                              lambda x: v.validar_codigo_moneda(x, "La moneda"), "USD")
+        moneda_destino = pedir("  Moneda de destino [CLP]: ",
+                               lambda x: v.validar_codigo_moneda(x, "La moneda"), "CLP")
 
-    try:
-        clima = ClienteApisExternas.consultar_clima(ciudad, pais)
-        repo_consultas.crear(
-            sesion.nombre_usuario, "clima", {"ciudad": ciudad, "pais": pais}, clima)
-        print(f"  Clima: {clima['temperatura']} grados, humedad {clima['humedad']}%")
-        print(f"  Estado del tiempo: {clima['estado_tiempo']} "
-              f"(codigo {clima['codigo_climatico']})")
-        if clima["alerta"]:
-            print(f"  {clima['alerta']}")
+        try:
+            clima = ClienteApisExternas.consultar_clima(ciudad, pais)
+            repo_consultas.crear(
+                sesion.nombre_usuario, "clima",
+                {"ciudad": ciudad, "pais": pais}, clima)
+            print(f"  Clima: {clima['temperatura']} grados, humedad {clima['humedad']}%")
+            print(f"  Estado del tiempo: {clima['estado_tiempo']} "
+                  f"(codigo {clima['codigo_climatico']})")
+            if clima["alerta"]:
+                print(f"  {clima['alerta']}")
 
-        cambio = ClienteApisExternas.consultar_tipo_cambio(
-            moneda_origen, moneda_destino)
-        repo_consultas.crear(
-            sesion.nombre_usuario, "tipo_cambio",
-            {"origen": moneda_origen.upper(), "destino": moneda_destino.upper()}, cambio)
-        print(f"  Tipo de cambio: 1 {cambio['origen']} = "
-              f"{cambio['tipo_cambio']} {cambio['destino']}")
-        print("  Respuestas guardadas localmente.")
-    except ErrorDominio as error:
-        print(f"  Dato invalido: {mensaje_seguro(error)}")
-    except ErrorApiExterna as error:
-        registrar_fallo("Consulta a servicio externo", error)
-        print(f"  Consulta externa no disponible: {error}")
-    except Exception as error:
-        registrar_fallo("Consulta a servicio externo", error)
-        print("  Consulta externa no disponible en este momento.")
+            cambio = ClienteApisExternas.consultar_tipo_cambio(
+                moneda_origen, moneda_destino)
+            repo_consultas.crear(
+                sesion.nombre_usuario, "tipo_cambio",
+                {"origen": moneda_origen.upper(), "destino": moneda_destino.upper()}, cambio)
+            print(f"  Tipo de cambio: 1 {cambio['origen']} = "
+                  f"{cambio['tipo_cambio']} {cambio['destino']}")
+            print("  Respuestas guardadas localmente.")
+        except ErrorDominio as error:
+            print(f"  Dato invalido: {mensaje_seguro(error)}")
+        except ErrorApiExterna as error:
+            registrar_fallo("Consulta a servicio externo", error)
+            print(f"  Consulta externa no disponible: {error}")
+        except Exception as error:
+            registrar_fallo("Consulta a servicio externo", error)
+            print("  Consulta externa no disponible en este momento.")
+
+        continue
 
 
 def leer_id(mensaje):
@@ -1020,7 +1043,8 @@ def menu_principal(
         print("  3. Departamentos")
         print("  4. Registros de horas")
         print("  5. Informes")
-        if not solo_consulta:
+        puede_consultar_externos = sesion.tiene_permiso("consultar_externos")
+        if not solo_consulta or puede_consultar_externos:
             print("  6. Consultas externas")
             if sesion.tiene_permiso("gestionar_usuarios"):
                 print("  7. Usuarios registrados")
@@ -1075,11 +1099,11 @@ def menu_principal(
             generar_informes(
                 sesion, repo_departamentos, repo_proyectos, repo_empleados,
                 repo_registros, planta)
-        elif opcion == 6 and not solo_consulta:
+        elif opcion == 6 and (not solo_consulta or sesion.tiene_permiso("consultar_externos")):
             consultar_servicios_externos(sesion, repo_empleados, repo_consultas)
         elif opcion == 7 and not solo_consulta and sesion.tiene_permiso("gestionar_usuarios"):
             menu_usuarios(sesion, repo_usuarios)
-        elif opcion == (6 if solo_consulta else
+        elif opcion == (6 if solo_consulta and not sesion.tiene_permiso("consultar_externos") else
                         (8 if sesion.tiene_permiso("gestionar_usuarios") else 7)):
             return "cambiar_usuario"
         elif opcion == 0:
@@ -1254,3 +1278,6 @@ if __name__ == "__main__":
         registrar_fallo("Fallo no controlado en el programa principal", error)
         print("\n  El programa se detuvo por un error inesperado.")
         print("  El detalle quedo registrado en ecotech.log para su revision.")
+        
+        
+        

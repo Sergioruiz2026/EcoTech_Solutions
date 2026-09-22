@@ -20,7 +20,7 @@ class Usuario:
         "gerente": {"consultar_datos", "gestionar_datos", "ver_salarios",
                     "aprobar_horas", "generar_informes",
                     "consultar_externos", "gestionar_usuarios"},
-        "operador": {"consultar_datos", "generar_informes"},
+        "operador": {"consultar_datos", "generar_informes", "consultar_externos"},
     }
 
     LARGO_MINIMO_CLAVE = 8

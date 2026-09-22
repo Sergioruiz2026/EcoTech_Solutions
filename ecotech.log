@@ -60,3 +60,19 @@
 2026-09-21 18:34:25 | INFO     | ACCESO CONCEDIDO | usuario=loreto
 2026-09-22 11:11:35 | INFO     | ACCESO CONCEDIDO | usuario=sergio
 2026-09-22 12:06:05 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-22 13:12:14 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-22 13:46:21 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-22 13:52:31 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-22 14:07:09 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-22 14:12:33 | INFO     | ACCESO DENEGADO | usuario=loreto
+2026-09-22 14:12:43 | INFO     | ACCESO DENEGADO | usuario=loreto
+2026-09-22 14:12:48 | INFO     | ACCESO CONCEDIDO | usuario=loreto
+2026-09-22 14:14:56 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-22 14:18:40 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-22 14:19:43 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-22 14:19:45 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-22 14:19:46 | INFO     | ACCESO DENEGADO | usuario=usuario desconocido
+2026-09-22 14:19:46 | WARNING  | BLOQUEO TEMPORAL | usuario=usuario desconocido | duracion=30 segundos
+2026-09-22 14:19:55 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-22 14:23:19 | INFO     | ACCESO CONCEDIDO | usuario=sergio
+2026-09-22 14:27:35 | INFO     | ACCESO CONCEDIDO | usuario=sergio

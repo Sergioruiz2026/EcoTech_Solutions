@@ -15,17 +15,43 @@ class ErrorApiExterna(RuntimeError):
 
 
 class ClienteApisExternas:
-    URL_GEOCODIFICACION = os.getenv(
+   URL_IP_GEO = os.getenv("ECOTECH_URL_IP_GEO", "http://ip-api.com/json")
+
+   @classmethod
+   def consultar_ubicacion_ip(cls, ip=""):
+        """Obtiene el país, ciudad y proveedor de internet de una IP (para logs de seguridad)."""
+        base_url = cls.URL_IP_GEO.rstrip("/")
+        
+        # Si hay IP especificada se concatena /IP, si no, se consulta el endpoint base /json
+        endpoint = f"{base_url}/{ip.strip()}" if ip.strip() else base_url
+
+        datos = cls._obtener_json(
+            endpoint, 
+            {"fields": "status,country,city,isp,query"}
+        )
+
+        if datos.get("status") != "success":
+            raise ErrorApiExterna("No se pudo geolocalizar la dirección IP.")
+
+        return {
+            "ip": datos.get("query"),
+            "pais": datos.get("country"),
+            "ciudad": datos.get("city"),
+            "proveedor": datos.get("isp"),
+        }
+     
+    
+   URL_GEOCODIFICACION = os.getenv(
         "ECOTECH_URL_GEOCODIFICACION",
         "https://geocoding-api.open-meteo.com/v1/search")
-    URL_PRONOSTICO = os.getenv(
+   URL_PRONOSTICO = os.getenv(
         "ECOTECH_URL_PRONOSTICO",
         "https://api.open-meteo.com/v1/forecast")
-    URL_TIPO_CAMBIO = os.getenv(
+   URL_TIPO_CAMBIO = os.getenv(
         "ECOTECH_URL_TIPO_CAMBIO",
         "https://open.er-api.com/v6/latest")
-    TIMEOUT = int(os.getenv("ECOTECH_API_TIMEOUT", "8"))
-    ESTADOS_TIEMPO = {
+   TIMEOUT = int(os.getenv("ECOTECH_API_TIMEOUT", "8"))
+   ESTADOS_TIEMPO = {
         0: "Despejado",
         1: "Mayormente despejado",
         2: "Parcialmente nublado",
@@ -59,20 +85,20 @@ class ClienteApisExternas:
     # Las entradas que viajan a la API se validan con el mismo modulo
     # que usa el resto del sistema: un solo criterio, un solo lugar.
 
-    @staticmethod
-    def validar_ciudad(ciudad):
+   @staticmethod
+   def validar_ciudad(ciudad):
         return v.validar_nombre(ciudad, "La ciudad")
 
-    @staticmethod
-    def validar_pais(pais):
+   @staticmethod
+   def validar_pais(pais):
         return v.validar_nombre(pais, "El pais")
 
-    @staticmethod
-    def validar_moneda(moneda):
+   @staticmethod
+   def validar_moneda(moneda):
         return v.validar_codigo_moneda(moneda, "La moneda")
 
-    @classmethod
-    def describir_tiempo(cls, codigo):
+   @classmethod
+   def describir_tiempo(cls, codigo):
         """Traduce el codigo WMO y marca lluvia o tormenta cuando corresponde."""
         estado = cls.ESTADOS_TIEMPO.get(codigo, "Estado del tiempo no informado")
         alerta = None
@@ -84,8 +110,8 @@ class ClienteApisExternas:
             alerta = "Alerta: hay lluvia."
         return estado, alerta
 
-    @classmethod
-    def _mensaje_estado_http(cls, estado):
+   @classmethod
+   def _mensaje_estado_http(cls, estado):
         if estado == 400:
             return "El servicio externo rechazo la solicitud."
         if estado in {401, 403}:
@@ -98,16 +124,16 @@ class ClienteApisExternas:
             return "El servicio externo no esta disponible en este momento."
         return "El servicio externo no pudo completar la consulta."
 
-    @staticmethod
-    def _normalizar_pais(pais):
+   @staticmethod
+   def _normalizar_pais(pais):
         descompuesto = unicodedata.normalize("NFD", pais)
         sin_tildes = "".join(
             caracter for caracter in descompuesto
             if unicodedata.category(caracter) != "Mn")
         return sin_tildes.casefold()
 
-    @classmethod
-    def _obtener_json(cls, url, parametros):
+   @classmethod
+   def _obtener_json(cls, url, parametros):
         consulta = f"{url}?{urlencode(parametros)}"
         solicitud = Request(consulta, headers={"User-Agent": "EcoTech/1.0"})
         try:
@@ -128,8 +154,8 @@ class ClienteApisExternas:
             raise ErrorApiExterna(
                 "El servicio externo devolvio una respuesta invalida.") from None
 
-    @classmethod
-    def consultar_clima(cls, ciudad, pais):
+   @classmethod
+   def consultar_clima(cls, ciudad, pais):
         ciudad = cls.validar_ciudad(ciudad)
         pais = cls.validar_pais(pais)
         ubicacion = cls._obtener_json(
@@ -166,8 +192,8 @@ class ClienteApisExternas:
             "zona_horaria": pronostico.get("timezone"),
         }
 
-    @classmethod
-    def consultar_tipo_cambio(cls, moneda_origen, moneda_destino):
+   @classmethod
+   def consultar_tipo_cambio(cls, moneda_origen, moneda_destino):
         origen = cls.validar_moneda(moneda_origen)
         destino = cls.validar_moneda(moneda_destino)
         if origen == destino:
