@@ -5,13 +5,16 @@ finales a partir de los datos recuperados desde la base.
 
 """
 
-from datetime import date
+from datetime import date, datetime, timezone
 from getpass import getpass
 import json
 from math import ceil
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import os
+import shutil
 import sqlite3
 from pathlib import Path
+import subprocess
 import webbrowser
 from threading import Event, Thread
 from time import monotonic
@@ -522,13 +525,22 @@ def mostrar_historial_consultas(repo_consultas):
             resumen = (f"clima: {respuesta.get('estado_tiempo', 'sin estado')}"
                        if consulta["tipo_consulta"] == "clima"
                        else f"tipo de cambio: {respuesta.get('tipo_cambio', 'sin tasa')}")
-            print(f"  {consulta['fecha_consulta']} | {consulta['nombre_usuario']} | "
+            fecha_local = _convertir_fecha_consulta_a_hora_local(
+                consulta["fecha_consulta"])
+            print(f"  {fecha_local} | {consulta['nombre_usuario']} | "
                   f"{consulta['tipo_consulta']} | {parametros} | {resumen}")
     except (ValueError, TypeError, json.JSONDecodeError):
         print("  No se pudo leer el historial de consultas.")
     except Exception as error:
         registrar_fallo("Historial de consultas externas", error)
         print("  No se pudo leer el historial de consultas.")
+
+
+def _convertir_fecha_consulta_a_hora_local(fecha_consulta):
+    """Convierte la fecha UTC de SQLite a la hora local del equipo."""
+    fecha_utc = datetime.fromisoformat(
+        str(fecha_consulta).replace(" ", "T")).replace(tzinfo=timezone.utc)
+    return fecha_utc.astimezone().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def consultar_salario_convertido(sesion, repo_empleados, repo_consultas):
@@ -606,10 +618,21 @@ class ManejadorGeolocalizacion(BaseHTTPRequestHandler):
         contenido = """
         <!DOCTYPE html>
         <html lang="es">
-        <head><meta charset="utf-8"><title>EcoTech Geolocalizacion</title></head>
-        <body style="font-family:Arial,sans-serif;padding:20px;">
-        <h2>EcoTech - Geolocalizacion del dispositivo</h2>
-        <p>Solicitando permiso de ubicacion...</p>
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <title>EcoTech Geolocalizacion</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 0; padding: 18px; width: 440px; }
+                        h2 { font-size: 19px; margin: 0 0 12px; }
+                        p { line-height: 1.4; margin: 0 0 16px; }
+                        button { padding: 9px 12px; cursor: pointer; }
+                    </style>
+                </head>
+                <body>
+                <h2>EcoTech - Geolocalizacion del dispositivo</h2>
+                <p id="estado">Presiona el boton para solicitar la ubicacion real del dispositivo.</p>
+                <button id="solicitar" type="button">Permitir acceso a mi ubicacion</button>
         <script>
             const enviar = (payload) => {
                 fetch('/geolocalizacion', {
@@ -618,30 +641,39 @@ class ManejadorGeolocalizacion(BaseHTTPRequestHandler):
                     body: JSON.stringify(payload)
                 }).catch(() => {});
             };
-            if (!navigator.geolocation) {
-                enviar({status: 'unsupported', message: 'El dispositivo o navegador no permite obtener la ubicacion.'});
-                document.body.innerHTML = '<p>El dispositivo o navegador no permite obtener la ubicacion.</p>';
-                return;
-            }
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    enviar({
-                        status: 'ok',
-                        latitud: position.coords.latitude,
-                        longitud: position.coords.longitude,
-                        precision: position.coords.accuracy,
-                    });
-                    document.body.innerHTML = '<p>Ubicacion recibida correctamente.</p>';
-                },
-                (error) => {
-                    const motivo = error.code === 1
-                        ? 'El usuario rechazo el permiso de ubicacion.'
-                        : 'No fue posible obtener la ubicacion del dispositivo.';
-                    enviar({status: 'denied', message: motivo, detalle: error.message});
-                    document.body.innerHTML = '<p>' + motivo + '</p>';
-                },
-                {enableHighAccuracy: true, timeout: 20000, maximumAge: 0}
-            );
+            const estado = document.getElementById('estado');
+            const boton = document.getElementById('solicitar');
+            const solicitar = () => {
+                if (!navigator.geolocation) {
+                    const motivo = 'El dispositivo o navegador no permite obtener la ubicacion.';
+                    estado.textContent = motivo;
+                    enviar({status: 'unsupported', message: motivo});
+                    return;
+                }
+                boton.disabled = true;
+                estado.textContent = 'Responde la solicitud de permiso del navegador...';
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        enviar({
+                            status: 'ok',
+                            latitud: position.coords.latitude,
+                            longitud: position.coords.longitude,
+                            precision: position.coords.accuracy,
+                        });
+                        estado.textContent = 'Ubicacion recibida correctamente.';
+                    },
+                    (error) => {
+                        const motivo = error.code === 1
+                            ? 'El usuario rechazo el permiso de ubicacion.'
+                            : 'No fue posible obtener la ubicacion del dispositivo: ' + error.message;
+                        enviar({status: 'denied', message: motivo, detalle: error.message});
+                        estado.textContent = motivo;
+                        boton.disabled = false;
+                    },
+                    {enableHighAccuracy: true, timeout: 20000, maximumAge: 0}
+                );
+            };
+            boton.addEventListener('click', solicitar);
         </script>
         </body>
         </html>
@@ -695,10 +727,7 @@ def solicitar_ubicacion_dispositivo_real():
     print("  " + "=" * 52)
     print("  Solicitando permiso de ubicacion...")
     print(f"  Abre esta URL en tu navegador: {url}")
-    try:
-        webbrowser.open(url, new=2)
-    except Exception:
-        pass
+    _abrir_ventana_geolocalizacion(url)
     print("  Si el navegador no muestra el aviso, permite la ubicacion manualmente en la pestaña abierta.")
     print("  Luego autoriza el acceso a tu ubicacion.")
     print("  " + "=" * 52)
@@ -725,6 +754,40 @@ def solicitar_ubicacion_dispositivo_real():
         print("  No fue posible obtener la ubicacion del dispositivo.")
         return None
     return {"latitud": latitud, "longitud": longitud, "precision": precision}
+
+
+def _abrir_ventana_geolocalizacion(url):
+    """Abre la solicitud en una ventana compacta cuando el navegador lo permite."""
+    navegadores = []
+    for nombre in ("msedge", "chrome", "chromium"):
+        ejecutable = shutil.which(nombre)
+        if ejecutable:
+            navegadores.append(ejecutable)
+
+    if os.name == "nt":
+        for variable, nombre in (("PROGRAMFILES(X86)", "Microsoft\\Edge\\Application\\msedge.exe"),
+                                 ("PROGRAMFILES", "Google\\Chrome\\Application\\chrome.exe")):
+            carpeta = os.environ.get(variable)
+            if carpeta:
+                ejecutable = str(Path(carpeta) / nombre)
+                if Path(ejecutable).exists():
+                    navegadores.append(ejecutable)
+
+    if navegadores:
+        try:
+            subprocess.Popen([
+                navegadores[0],
+                f"--app={url}",
+                "--window-size=520,360",
+            ])
+            return
+        except OSError:
+            pass
+
+    try:
+        webbrowser.open(url, new=1)
+    except Exception:
+        pass
 
 
 def consultar_geolocalizacion_usuario(sesion, repo_consultas):

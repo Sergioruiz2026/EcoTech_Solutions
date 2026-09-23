@@ -12,7 +12,7 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 1799 >>
+<< /Length 1990 >>
 stream
 BT
 /F1 10 Tf
@@ -22,7 +22,7 @@ BT
 0 -14 Td
 (Informe general EcoTech) Tj
 0 -14 Td
-(Emitido: 2026-09-21 | Formato: PDF) Tj
+(Emitido: 2026-09-23 | Formato: PDF) Tj
 0 -14 Td
 () Tj
 0 -14 Td
@@ -34,25 +34,29 @@ BT
 0 -14 Td
 () Tj
 0 -14 Td
-(Empleados \(5\)) Tj
+(Empleados \(6\)) Tj
 0 -14 Td
-(  1: Andres Munoz Pino | andres.munoz@ecotech.cl | Operaciones | Salario: $ *******) Tj
+(  1: Andres Munoz Pino | Correo: a**********z@ecotech.cl | Operaciones | Salario: $ *******) Tj
 0 -14 Td
-(  2: Camila Rojas Vergara | camila.rojas@ecotech.cl | Operaciones | Salario: $ *******) Tj
+(  2: Camila Rojas Vergara | Correo: c**********s@ecotech.cl | Operaciones | Salario: $ *******) Tj
 0 -14 Td
-(  3: Luis Farias Soto | luis.farias@ecotech.cl | Operaciones | Salario: $ *******) Tj
+(  3: Luis Farias Soto | Correo: l*********s@ecotech.cl | Operaciones | Salario: $ *******) Tj
 0 -14 Td
-(  4: Paula Ibarra Leon | paula.ibarra@ecotech.cl | Mantencion | Salario: $ *******) Tj
+(  4: Paula Ibarra Leon | Correo: p**********a@ecotech.cl | Mantencion | Salario: $ *******) Tj
 0 -14 Td
-(  5: mario diaz | mario@gmil.com | Mantencion | Salario: $ *******) Tj
+(  6: loreto | Correo: l****o@ecotech.cl | Mantencion | Salario: $ *******) Tj
+0 -14 Td
+(  5: mario diaz | Correo: m***o@gmil.com | Mantencion | Salario: $ *******) Tj
 0 -14 Td
 () Tj
 0 -14 Td
-(Proyectos \(2\)) Tj
+(Proyectos \(3\)) Tj
 0 -14 Td
 (  2: Bodega Placilla | inicio 2026-05-18) Tj
 0 -14 Td
 (  1: Planta Solar Quillota | inicio 2026-03-02) Tj
+0 -14 Td
+(  3: Termopanles en Valdivia | inicio 2026-12-02) Tj
 0 -14 Td
 () Tj
 0 -14 Td
@@ -92,5 +96,5 @@ xref
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-2162
+2353
 %%EOF

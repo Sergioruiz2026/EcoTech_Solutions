@@ -46,7 +46,7 @@ class ClienteApisExternas:
         "https://geocoding-api.open-meteo.com/v1/search")
    URL_GEOCODIFICACION_INVERSA = os.getenv(
         "ECOTECH_URL_GEOCODIFICACION_INVERSA",
-        "https://geocoding-api.open-meteo.com/v1/reverse")
+       "https://api.bigdatacloud.net/data/reverse-geocode-client")
    URL_PRONOSTICO = os.getenv(
         "ECOTECH_URL_PRONOSTICO",
         "https://api.open-meteo.com/v1/forecast")
@@ -174,19 +174,32 @@ class ClienteApisExternas:
         respuesta = cls._obtener_json(
             cls.URL_GEOCODIFICACION_INVERSA,
             {"latitude": latitud, "longitude": longitud,
-             "language": "es", "format": "json"})
+             "accept-language": "es", "addressdetails": 1, "format": "json"})
         resultados = respuesta.get("results") or []
-        if not resultados:
+        if resultados:
+            lugar = resultados[0]
+            ciudad = lugar.get("name") or lugar.get("city")
+            region = lugar.get("admin1") or lugar.get("state")
+            pais = lugar.get("country")
+        else:
+            direccion = respuesta.get("address") or {}
+            ciudad = (direccion.get("city") or direccion.get("town")
+                      or direccion.get("village") or direccion.get("municipality"))
+            region = direccion.get("state") or direccion.get("region")
+            pais = direccion.get("country")
+            ciudad = ciudad or respuesta.get("locality")
+            region = region or respuesta.get("principalSubdivision")
+            pais = pais or respuesta.get("countryName")
+        if not ciudad and not region and not pais:
             raise ErrorApiExterna("No se encontraron resultados para esas coordenadas.")
 
-        lugar = resultados[0]
         return {
             "latitud": latitud,
             "longitud": longitud,
             "precision": precision,
-            "ciudad": lugar.get("name") or lugar.get("city") or "No disponible",
-            "region": lugar.get("admin1") or lugar.get("state") or "No disponible",
-            "pais": lugar.get("country") or "No disponible",
+            "ciudad": ciudad or "No disponible",
+            "region": region or "No disponible",
+            "pais": pais or "No disponible",
         }
 
    @classmethod
