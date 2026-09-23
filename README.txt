@@ -66,7 +66,7 @@ Menu principal:
   3. Departamentos        Idem
   4. Registros de horas   Idem
   5. Informes             Genera PDF y Excel en salidas/
-  6. Consultas externas   Clima y tipo de cambio desde APIs
+  6. Consultas externas   Geolocalizacion, clima, tipo de cambio y historial
   7. Crear usuario        Gestion de cuentas segun autorizacion
 
  Usuario:
@@ -76,6 +76,20 @@ Menu principal:
   4. Registros de horas   Mostrar y consultar
   5. Informes             Genera PDF y Excel en salidas/
 
+Menu de consultas externas:
+
+  1. Consultar geolocalizacion
+  2. Consultar clima
+  3. Consultar tipo de cambio
+  4. Convertir salario a otra moneda
+  5. Ver historial de consultas
+  0. Volver
+
+La consulta de geolocalizacion usa la API por IP para obtener la direccion
+publica detectada, junto con ciudad, pais y proveedor de internet. El sistema
+mantiene la geolocalizacion automatica como ayuda para sugerir una ubicacion
+por defecto para otras consultas, pero ahora el usuario tambien puede invocarla
+explcitamente desde el menu y visualizar los datos reales obtenidos de la API.
 Al comenzar, el sistema permite iniciar sesión o registrar un usuario nuevo.
 Al registrar una cuenta se solicita nombre de usuario, clave y rol. Los roles
 disponibles son administrador, gerente y operador (usuario común). Para crear
@@ -189,22 +203,31 @@ CONSULTAS A BASE DE DATOS
  SERVICIOS EXTERNOS
 ===============================================================================
 
+  Geolocalizacion    http://ip-api.com/json
   Geocodificacion    https://geocoding-api.open-meteo.com/v1/search
   Pronostico         https://api.open-meteo.com/v1/forecast
   Tipo de cambio     https://open.er-api.com/v6/latest
+
+La geolocalizacion por IP se usa para detectar ciudad, pais y proveedor del
+usuario actual, y puede consultarse directamente desde el menu de servicios
+externos. La geocodificacion se reutiliza internamente cuando se consulta clima
+para convertir la ubicacion en coordenadas, y la API de pronostico devuelve la
+informacion meteorologica real. La API de tipo de cambio se usa tanto para la
+consulta independiente como para la conversion de salario a otra moneda.
 
 Ninguno requiere llave de acceso, de modo que no hay credenciales de API en
 el codigo. El tiempo de espera y las direcciones se leen de variables de
 entorno, con valores por defecto:
 
+  ECOTECH_URL_IP_GEO
   ECOTECH_URL_GEOCODIFICACION
   ECOTECH_URL_PRONOSTICO
   ECOTECH_URL_TIPO_CAMBIO
   ECOTECH_API_TIMEOUT          (8 segundos por defecto)
 
-Si no hay conexion a internet, la opcion 6 informa que el servicio no esta
-disponible y el programa continua sin interrumpirse. El resto del sistema
-funciona sin conexion.
+Si no hay conexion a internet, las opciones de servicios externos informan que
+el servicio no esta disponible y el programa continua sin interrumpirse. El
+resto del sistema funciona sin conexion.
 
 Las respuestas obtenidas se guardan en la tabla consultas_api, con el usuario
 que consulto, los parametros y la respuesta completa.

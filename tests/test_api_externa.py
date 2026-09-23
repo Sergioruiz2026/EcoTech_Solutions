@@ -79,6 +79,32 @@ class TestClienteApisExternas(unittest.TestCase):
             with self.assertRaisesRegex(ErrorApiExterna, "tasas invalidas"):
                 ClienteApisExternas.consultar_tipo_cambio("USD", "CLP")
 
+    def test_consultar_ubicacion_dispositivo_usa_geocodificacion_inversa(self):
+        datos = {
+            "results": [{
+                "name": "Villa Alemana",
+                "admin1": "Valparaiso",
+                "country": "Chile",
+                "latitude": -33.05,
+                "longitude": -71.37,
+            }]
+        }
+        with patch.object(
+                ClienteApisExternas,
+                "_obtener_json",
+                return_value=datos):
+            ubicacion = ClienteApisExternas.consultar_ubicacion_dispositivo(-33.05, -71.37)
+
+        self.assertEqual(ubicacion["ciudad"], "Villa Alemana")
+        self.assertEqual(ubicacion["region"], "Valparaiso")
+        self.assertEqual(ubicacion["pais"], "Chile")
+        self.assertAlmostEqual(ubicacion["latitud"], -33.05)
+        self.assertAlmostEqual(ubicacion["longitud"], -71.37)
+
+    def test_rechaza_coordenadas_invalidas_para_dispositivo(self):
+        with self.assertRaisesRegex(ErrorApiExterna, "coordenadas"):
+            ClienteApisExternas.consultar_ubicacion_dispositivo(200, -71.37)
+
     def test_compara_pais_sin_distinguir_tildes(self):
         ubicacion = {
             "results": [{
@@ -183,7 +209,7 @@ class TestClienteApisExternas(unittest.TestCase):
                        "pais": "Chile",
                        "proveedor": "Google LLC",
                    }), \
-                patch("main.leer_opcion", side_effect=[1, 0]), \
+                patch("main.leer_opcion", side_effect=[1, 1, 0, 0]), \
                 patch("sys.stdout") as stdout:
             consultar_servicios_externos(usuario, None, None)
 

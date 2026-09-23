@@ -9,8 +9,11 @@ from datetime import date
 from getpass import getpass
 import json
 from math import ceil
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import sqlite3
 from pathlib import Path
+import webbrowser
+from threading import Event, Thread
 from time import monotonic
 
 from database.database import BaseDatos
@@ -590,6 +593,140 @@ def detectar_ubicacion_usuario():
     return None, None
 
 
+_estado_geolocalizacion_dispositivo = {"evento": Event(), "resultado": None, "error": None}
+
+
+class ManejadorGeolocalizacion(BaseHTTPRequestHandler):
+    """Servidor local para recibir coordenadas reales desde el navegador."""
+
+    def do_GET(self):
+        if self.path not in {"/", "/geolocalizacion"}:
+            self.send_error(404, "No encontrado")
+            return
+        contenido = """
+        <!DOCTYPE html>
+        <html lang="es">
+        <head><meta charset="utf-8"><title>EcoTech Geolocalizacion</title></head>
+        <body style="font-family:Arial,sans-serif;padding:20px;">
+        <h2>EcoTech - Geolocalizacion del dispositivo</h2>
+        <p>Solicitando permiso de ubicacion...</p>
+        <script>
+            const enviar = (payload) => {
+                fetch('/geolocalizacion', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                }).catch(() => {});
+            };
+            if (!navigator.geolocation) {
+                enviar({status: 'unsupported', message: 'El dispositivo o navegador no permite obtener la ubicacion.'});
+                document.body.innerHTML = '<p>El dispositivo o navegador no permite obtener la ubicacion.</p>';
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    enviar({
+                        status: 'ok',
+                        latitud: position.coords.latitude,
+                        longitud: position.coords.longitude,
+                        precision: position.coords.accuracy,
+                    });
+                    document.body.innerHTML = '<p>Ubicacion recibida correctamente.</p>';
+                },
+                (error) => {
+                    const motivo = error.code === 1
+                        ? 'El usuario rechazo el permiso de ubicacion.'
+                        : 'No fue posible obtener la ubicacion del dispositivo.';
+                    enviar({status: 'denied', message: motivo, detalle: error.message});
+                    document.body.innerHTML = '<p>' + motivo + '</p>';
+                },
+                {enableHighAccuracy: true, timeout: 20000, maximumAge: 0}
+            );
+        </script>
+        </body>
+        </html>
+        """.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(contenido)))
+        self.end_headers()
+        self.wfile.write(contenido)
+
+    def do_POST(self):
+        if self.path not in {"/geolocalizacion", "/"}:
+            self.send_error(404, "No encontrado")
+            return
+        longitud = int(self.headers.get("Content-Length", "0"))
+        cuerpo = self.rfile.read(longitud).decode("utf-8", errors="replace")
+        try:
+            datos = json.loads(cuerpo or "{}")
+        except json.JSONDecodeError:
+            datos = {"status": "error", "message": "No fue posible obtener la ubicacion del dispositivo."}
+
+        _estado_geolocalizacion_dispositivo["resultado"] = datos
+        _estado_geolocalizacion_dispositivo["error"] = None
+        if datos.get("status") in {"unsupported", "denied", "error"}:
+            _estado_geolocalizacion_dispositivo["error"] = (
+                datos.get("message") or "No fue posible obtener la ubicacion del dispositivo.")
+        _estado_geolocalizacion_dispositivo["evento"].set()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b'{"ok": true}')
+
+    def log_message(self, format, *args):
+        return
+
+
+def solicitar_ubicacion_dispositivo_real():
+    """Abre una pagina local para pedir ubicacion real del navegador con permiso del usuario."""
+    _estado_geolocalizacion_dispositivo["evento"].clear()
+    _estado_geolocalizacion_dispositivo["resultado"] = None
+    _estado_geolocalizacion_dispositivo["error"] = None
+
+    servidor = ThreadingHTTPServer(("127.0.0.1", 0), ManejadorGeolocalizacion)
+    puerto = servidor.server_address[1]
+    hilo = Thread(target=servidor.serve_forever, daemon=True)
+    hilo.start()
+
+    url = f"http://127.0.0.1:{puerto}/"
+    print("\n  " + "=" * 52)
+    print("  GEOLOCALIZACION DEL DISPOSITIVO")
+    print("  " + "=" * 52)
+    print("  Solicitando permiso de ubicacion...")
+    print(f"  Abre esta URL en tu navegador: {url}")
+    try:
+        webbrowser.open(url, new=2)
+    except Exception:
+        pass
+    print("  Si el navegador no muestra el aviso, permite la ubicacion manualmente en la pestaña abierta.")
+    print("  Luego autoriza el acceso a tu ubicacion.")
+    print("  " + "=" * 52)
+
+    if not _estado_geolocalizacion_dispositivo["evento"].wait(timeout=180):
+        servidor.shutdown()
+        servidor.server_close()
+        print("  No fue posible obtener la ubicacion del dispositivo.")
+        return None
+
+    servidor.shutdown()
+    servidor.server_close()
+
+    resultado = _estado_geolocalizacion_dispositivo["resultado"]
+    if not resultado or resultado.get("status") in {"unsupported", "denied", "error"}:
+        mensaje = _estado_geolocalizacion_dispositivo["error"] or "No fue posible obtener la ubicacion del dispositivo."
+        print(f"  {mensaje}")
+        return None
+
+    latitud = resultado.get("latitud")
+    longitud = resultado.get("longitud")
+    precision = resultado.get("precision")
+    if latitud is None or longitud is None:
+        print("  No fue posible obtener la ubicacion del dispositivo.")
+        return None
+    return {"latitud": latitud, "longitud": longitud, "precision": precision}
+
+
 def consultar_geolocalizacion_usuario(sesion, repo_consultas):
     """Muestra la geolocalizacion obtenida desde la API por IP."""
     try:
@@ -618,7 +755,63 @@ def consultar_geolocalizacion_usuario(sesion, repo_consultas):
     print(f"  Ciudad: {ubicacion.get('ciudad') or 'No disponible'}")
     print(f"  Pais: {ubicacion.get('pais') or 'No disponible'}")
     print(f"  Proveedor: {ubicacion.get('proveedor') or 'No disponible'}")
+    print("\n  Nota: La ubicacion obtenida mediante IP es aproximada")
+    print("  y puede no corresponder exactamente a la ubicacion fisica del usuario.")
     print("  " + "=" * 52)
+
+
+def consultar_geolocalizacion_dispositivo(sesion, repo_consultas):
+    """Obtiene coordenadas del dispositivo con permiso del usuario y las convierte a ubicacion legible."""
+    ubicacion_dispositivo = solicitar_ubicacion_dispositivo_real()
+    if ubicacion_dispositivo is None:
+        return
+
+    latitud = ubicacion_dispositivo["latitud"]
+    longitud = ubicacion_dispositivo["longitud"]
+    precision = ubicacion_dispositivo.get("precision")
+    try:
+        detalle = ClienteApisExternas.consultar_ubicacion_dispositivo(latitud, longitud, precision)
+        if repo_consultas is not None:
+            repo_consultas.crear(
+                sesion.nombre_usuario, "geolocalizacion_dispositivo",
+                {"latitud": latitud, "longitud": longitud}, detalle)
+
+        print("\n  " + "=" * 52)
+        print("  GEOLOCALIZACION DEL DISPOSITIVO")
+        print("  " + "=" * 52)
+        print(f"  Latitud: {detalle.get('latitud')}")
+        print(f"  Longitud: {detalle.get('longitud')}")
+        if precision is not None:
+            print(f"  Precision: {precision} metros")
+        print(f"  Ubicacion: {detalle.get('ciudad')}, {detalle.get('region')}, {detalle.get('pais')}")
+        print("  " + "=" * 52)
+    except ErrorApiExterna as error:
+        registrar_fallo("Geolocalizacion del dispositivo", error)
+        print(f"  No fue posible obtener la ubicacion del dispositivo: {error}")
+    except Exception:
+        registrar_fallo("Geolocalizacion del dispositivo", None)
+        print("  No fue posible obtener la ubicacion del dispositivo.")
+
+
+def consultar_geolocalizacion_menu(sesion, repo_consultas):
+    """Submenu para distinguir geolocalizacion por IP y por dispositivo."""
+    while True:
+        titulo("GEOLOCALIZACION")
+        print("  1. Geolocalizacion por IP")
+        print("  2. Geolocalizacion del dispositivo")
+        print("  0. Volver")
+        opcion = leer_opcion("  Seleccione una opcion: ")
+        if opcion is None:
+            continue
+        if opcion == 1:
+            consultar_geolocalizacion_usuario(sesion, repo_consultas)
+            continue
+        if opcion == 2:
+            consultar_geolocalizacion_dispositivo(sesion, repo_consultas)
+            continue
+        if opcion == 0:
+            return
+        print("  Por favor, coloque la opcion correcta.")
 
 
 def consultar_servicios_externos(sesion, repo_empleados, repo_consultas):
@@ -645,7 +838,7 @@ def consultar_servicios_externos(sesion, repo_empleados, repo_consultas):
             continue
 
         if opcion == 1:
-            consultar_geolocalizacion_usuario(sesion, repo_consultas)
+            consultar_geolocalizacion_menu(sesion, repo_consultas)
             continue
         if opcion == 2:
             ciudad = pedir(f"  Ciudad [{ciudad_default}]: ",

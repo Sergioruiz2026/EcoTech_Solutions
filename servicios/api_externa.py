@@ -4,7 +4,7 @@ import json
 import os
 import unicodedata
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode
 from urllib.request import Request, urlopen
 
 from seguridad import validaciones as v
@@ -44,6 +44,9 @@ class ClienteApisExternas:
    URL_GEOCODIFICACION = os.getenv(
         "ECOTECH_URL_GEOCODIFICACION",
         "https://geocoding-api.open-meteo.com/v1/search")
+   URL_GEOCODIFICACION_INVERSA = os.getenv(
+        "ECOTECH_URL_GEOCODIFICACION_INVERSA",
+        "https://geocoding-api.open-meteo.com/v1/reverse")
    URL_PRONOSTICO = os.getenv(
         "ECOTECH_URL_PRONOSTICO",
         "https://api.open-meteo.com/v1/forecast")
@@ -153,6 +156,38 @@ class ClienteApisExternas:
         except (json.JSONDecodeError, UnicodeDecodeError):
             raise ErrorApiExterna(
                 "El servicio externo devolvio una respuesta invalida.") from None
+
+   @classmethod
+   def consultar_ubicacion_dispositivo(cls, latitud, longitud, precision=None):
+        """Obtiene ubicacion legible a partir de coordenadas reales del dispositivo."""
+        try:
+            latitud = float(latitud)
+            longitud = float(longitud)
+        except (TypeError, ValueError):
+            raise ErrorApiExterna("Las coordenadas del dispositivo no son validas.") from None
+
+        if not -90 <= latitud <= 90:
+            raise ErrorApiExterna("Las coordenadas del dispositivo no son validas.")
+        if not -180 <= longitud <= 180:
+            raise ErrorApiExterna("Las coordenadas del dispositivo no son validas.")
+
+        respuesta = cls._obtener_json(
+            cls.URL_GEOCODIFICACION_INVERSA,
+            {"latitude": latitud, "longitude": longitud,
+             "language": "es", "format": "json"})
+        resultados = respuesta.get("results") or []
+        if not resultados:
+            raise ErrorApiExterna("No se encontraron resultados para esas coordenadas.")
+
+        lugar = resultados[0]
+        return {
+            "latitud": latitud,
+            "longitud": longitud,
+            "precision": precision,
+            "ciudad": lugar.get("name") or lugar.get("city") or "No disponible",
+            "region": lugar.get("admin1") or lugar.get("state") or "No disponible",
+            "pais": lugar.get("country") or "No disponible",
+        }
 
    @classmethod
    def consultar_clima(cls, ciudad, pais):
