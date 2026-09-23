@@ -27,7 +27,7 @@ class RepositorioProyecto(RepositorioBase):
         return proyecto
 
     def listar(self):
-        filas = self._leer_todos(f"{self.SELECT_BASE} ORDER BY nombre")
+        filas = self._leer_todos(f"{self.SELECT_BASE} ORDER BY id")
         return [self.__fila_a_proyecto(fila) for fila in filas]
 
     def buscar_por_id(self, id_proyecto):

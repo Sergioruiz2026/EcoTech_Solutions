@@ -55,16 +55,16 @@
   ],
   "proyectos": [
     {
-      "id": 2,
-      "nombre": "Bodega Placilla",
-      "descripcion": "Automatizacion del sistema de pesaje",
-      "fecha_inicio": "2026-05-18"
-    },
-    {
       "id": 1,
       "nombre": "Planta Solar Quillota",
       "descripcion": "Instalacion de paneles fotovoltaicos",
       "fecha_inicio": "2026-03-02"
+    },
+    {
+      "id": 2,
+      "nombre": "Bodega Placilla",
+      "descripcion": "Automatizacion del sistema de pesaje",
+      "fecha_inicio": "2026-05-18"
     },
     {
       "id": 3,

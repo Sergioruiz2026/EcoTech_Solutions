@@ -1057,9 +1057,10 @@ def mostrar_empleados(repo_empleados, sesion):
     for empleado in repo_empleados.listar():
         departamento = (empleado.departamento.nombre
                         if empleado.departamento else "Sin departamento")
+        correo = v.formatear_correo_informe(empleado.correo, sesion)
         salario = (f"{empleado.obtener_salario():>12.2f}"
                    if puede_ver_salarios else "************")
-        print(f"  {empleado.id:<5} {empleado.nombre:<30} {empleado.correo:<30} "
+        print(f"  {empleado.id:<5} {empleado.nombre:<30} {correo:<30} "
               f"{salario}  {departamento}")
 
 
@@ -1117,9 +1118,10 @@ def consultar_empleado(repo_empleados, sesion):
     if empleado is None:
         print("  Empleado no encontrado.")
     else:
+        correo = v.formatear_correo_informe(empleado.correo, sesion)
         salario = (str(empleado.obtener_salario())
                    if sesion.tiene_permiso("ver_salarios") else "********")
-        print(f"  {empleado.nombre} | {empleado.correo} | "
+        print(f"  {empleado.nombre} | {correo} | "
               f"salario {salario}")
 
 
