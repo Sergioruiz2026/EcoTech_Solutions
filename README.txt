@@ -90,6 +90,29 @@ publica detectada, junto con ciudad, pais y proveedor de internet. El sistema
 mantiene la geolocalizacion automatica como ayuda para sugerir una ubicacion
 por defecto para otras consultas, pero ahora el usuario tambien puede invocarla
 explcitamente desde el menu y visualizar los datos reales obtenidos de la API.
+Tambien se puede solicitar la geolocalizacion real del dispositivo mediante el
+navegador. La autorizacion se abre en una ventana compacta de aproximadamente
+520 x 360 pixeles cuando Edge, Chrome o Chromium estan disponibles.
+
+INTERFAZ DE CONSOLA
+  Los menus interactivos de main.py utilizan una presentacion ejecutiva con
+  encabezados centrados dentro de marcos Unicode de doble linea, secciones
+  visuales para agrupar operaciones y colores ANSI para destacar la navegacion.
+  La pantalla se limpia antes de mostrar cada menu, submenu o resultado.
+
+  Las pantallas de resultados de clima, tipo de cambio, historial y
+  geolocalizacion muestran la informacion con viñetas y esperan que el usuario
+  presione ENTER antes de regresar al menu correspondiente. En ejecuciones no
+  interactivas o pruebas automatizadas la pausa se omite para evitar bloqueos.
+
+  El historial de consultas guarda sus fechas en UTC mediante SQLite, pero las
+  convierte a la hora local del equipo al mostrarlas. Esto evita desfases, como
+  las tres horas observadas anteriormente, sin modificar los datos almacenados.
+
+  La navegacion de los menus usa mapas de opciones (diccionarios de handlers),
+  lo que mantiene separadas la presentacion, los permisos y las operaciones
+  de negocio.
+
 Al comenzar, el sistema permite iniciar sesión o registrar un usuario nuevo.
 Al registrar una cuenta se solicita nombre de usuario, clave y rol. Los roles
 disponibles son administrador, gerente y operador (usuario común). Para crear

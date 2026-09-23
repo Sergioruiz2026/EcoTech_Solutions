@@ -15,6 +15,7 @@ import shutil
 import sqlite3
 from pathlib import Path
 import subprocess
+import sys
 import webbrowser
 from threading import Event, Thread
 from time import monotonic
@@ -51,11 +52,47 @@ BLOQUEO_BASE_SEGUNDOS = 30
 _estado_login = {}
 
 
+ANCHO_ENCABEZADO = 58
+ANSI_CIAN = "\033[36m"
+ANSI_AMARILLO = "\033[33m"
+ANSI_VERDE = "\033[32m"
+ANSI_ROJO = "\033[31m"
+ANSI_RESET = "\033[0m"
+
+
+def limpiar_pantalla():
+    os.system("cls" if os.name == "nt" else "clear")
+
+
+def dibujar_encabezado(titulo, subtitulo=""):
+    """Limpia la consola y dibuja un encabezado ejecutivo centrado."""
+    limpiar_pantalla()
+    print(f"╔{'═' * ANCHO_ENCABEZADO}╗")
+    print(f"║{titulo.center(ANCHO_ENCABEZADO)}║")
+    if subtitulo:
+        print(f"║{subtitulo.center(ANCHO_ENCABEZADO)}║")
+    print(f"╚{'═' * ANCHO_ENCABEZADO}╝")
+
+
+def _seccion(nombre):
+    print(f"\n  {ANSI_CIAN}── {nombre.upper()} ──{ANSI_RESET}")
+
+
+def _opcion(numero, texto, color=""):
+    print(f"  {color}[{numero}]{ANSI_RESET if color else ''} {texto}")
+
+
+def pausar_resultado():
+    if not sys.stdin.isatty() or "unittest" in sys.modules:
+        return
+    try:
+        input("\nPresione ENTER para continuar...")
+    except (EOFError, StopIteration):
+        pass
+
+
 def titulo(texto):
-    print()
-    print("=" * 66)
-    print(f"  {texto}")
-    print("=" * 66)
+    dibujar_encabezado(texto)
 
 
 def pedir(mensaje, validador, valor_actual=None, obligatorio=True):
@@ -444,31 +481,30 @@ def menu_usuarios(sesion, repo_usuarios):
         return
 
     while True:
-        titulo("Menu de usuarios")
-        print("  1. Mostrar usuarios registrados")
-        print("  2. Crear usuario")
-        print("  3. Modificar usuario")
-        print("  4. Eliminar usuario")
-        print("  5. Cambiar contraseña")
-        print("  0. Volver")
-        opcion = leer_opcion("  Seleccione una opcion: ")
+        dibujar_encabezado("GESTIÓN DE USUARIOS", "Administración de cuentas y permisos")
+        _seccion("OPERACIONES")
+        _opcion(1, "Mostrar usuarios registrados")
+        _opcion(2, "Crear usuario")
+        _opcion(3, "Modificar usuario")
+        _opcion(4, "Eliminar usuario")
+        _opcion(5, "Cambiar contraseña")
+        _seccion("NAVEGACIÓN")
+        _opcion(0, "Volver", ANSI_AMARILLO)
+        opcion = leer_opcion("\n  Seleccione una opción: ", opciones={0, 1, 2, 3, 4, 5})
         if opcion is None:
             continue
         try:
-            if opcion == 1:
-                mostrar_usuarios(repo_usuarios)
-            elif opcion == 2:
-                registrar_nuevo_usuario(repo_usuarios, sesion)
-            elif opcion == 3:
-                modificar_usuario(repo_usuarios, sesion)
-            elif opcion == 4:
-                eliminar_usuario(repo_usuarios, sesion)
-            elif opcion == 5:
-                cambiar_contrasena_usuario(repo_usuarios)
-            elif opcion == 0:
+            handlers = {
+                1: lambda: mostrar_usuarios(repo_usuarios),
+                2: lambda: registrar_nuevo_usuario(repo_usuarios, sesion),
+                3: lambda: modificar_usuario(repo_usuarios, sesion),
+                4: lambda: eliminar_usuario(repo_usuarios, sesion),
+                5: lambda: cambiar_contrasena_usuario(repo_usuarios),
+            }
+            if opcion == 0:
                 return
-            else:
-                print("  Por favor, coloque la opcion correcta.")
+            handlers[opcion]()
+            pausar_resultado()
         except ErrorDominio as error:
             registrar_fallo(f"Gestion de usuarios opcion {opcion}", error)
             print(f"  {mensaje_seguro(error)}")
@@ -480,16 +516,22 @@ def menu_usuarios(sesion, repo_usuarios):
 def iniciar_sesion(repo_usuarios, intentos_maximos=3):
     """Permite iniciar sesion o registrar una cuenta nueva."""
     while True:
-        titulo("BIENVENIDO A ECOTECH SOLUTIONS")
-        print("  1. Ingresar con usuario")
-        print("  2. Registrar nuevo usuario")
-        print("  0. Salir")
-        opcion = leer_opcion("  Seleccione una opcion: ")
+        dibujar_encabezado("ECOTECH SOLUTIONS", "Sistema Integrado de Gestión")
+        _seccion("ACCESO")
+        _opcion(1, "Ingresar con usuario")
+        _opcion(2, "Registrar nuevo usuario")
+        _seccion("SALIDA")
+        _opcion(0, "Salir del sistema", ANSI_AMARILLO)
+        opcion = leer_opcion("\n  Seleccione una opción: ", opciones={0, 1, 2})
         if opcion is None:
             continue
 
+        handlers = {
+            1: lambda: autenticar_usuario(repo_usuarios, intentos_maximos),
+            2: lambda: registrar_nuevo_usuario(repo_usuarios),
+        }
         if opcion == 1:
-            sesion = autenticar_usuario(repo_usuarios, intentos_maximos)
+            sesion = handlers[opcion]()
             if sesion is not None:
                 if (sesion.debe_cambiar_clave
                         and not completar_cambio_obligatorio(repo_usuarios, sesion)):
@@ -497,14 +539,13 @@ def iniciar_sesion(repo_usuarios, intentos_maximos=3):
                 return sesion
         elif opcion == 2:
             try:
-                registrar_nuevo_usuario(repo_usuarios)
+                handlers[opcion]()
+                pausar_resultado()
             except ErrorDominio as error:
                 registrar_fallo("Registro de usuario", error)
                 print(f"  {mensaje_seguro(error)}")
         elif opcion == 0:
             return None
-        else:
-            print("  Por favor, coloque la opcion correcta.")
 
 
 def mostrar_historial_consultas(repo_consultas):
@@ -516,19 +557,26 @@ def mostrar_historial_consultas(repo_consultas):
         consultas = repo_consultas.listar(limite)
         if not consultas:
             print("  No hay consultas externas guardadas.")
+            pausar_resultado()
             return
 
-        titulo("Historial de consultas externas")
-        for consulta in consultas:
+        dibujar_encabezado("HISTORIAL DE CONSULTAS", "Más recientes primero")
+        print("  FECHA Y HORA          USUARIO              TIPO DE CONSULTA")
+        print("  " + "─" * 66)
+        for indice, consulta in enumerate(consultas, start=1):
             parametros = json.loads(consulta["parametros_json"])
             respuesta = json.loads(consulta["respuesta_json"])
-            resumen = (f"clima: {respuesta.get('estado_tiempo', 'sin estado')}"
-                       if consulta["tipo_consulta"] == "clima"
-                       else f"tipo de cambio: {respuesta.get('tipo_cambio', 'sin tasa')}")
+            tipo_consulta = consulta["tipo_consulta"]
+            resumen = _resumen_consulta_historial(tipo_consulta, respuesta)
             fecha_local = _convertir_fecha_consulta_a_hora_local(
                 consulta["fecha_consulta"])
-            print(f"  {fecha_local} | {consulta['nombre_usuario']} | "
-                  f"{consulta['tipo_consulta']} | {parametros} | {resumen}")
+            print(f"  {indice:>2}. {fecha_local:<19} "
+                  f"{consulta['nombre_usuario']:<20} {tipo_consulta}")
+            print(f"       Parámetros: {parametros}")
+            print(f"       Resultado:  {resumen}")
+            if indice < len(consultas):
+                print("  " + "·" * 66)
+        pausar_resultado()
     except (ValueError, TypeError, json.JSONDecodeError):
         print("  No se pudo leer el historial de consultas.")
     except Exception as error:
@@ -541,6 +589,31 @@ def _convertir_fecha_consulta_a_hora_local(fecha_consulta):
     fecha_utc = datetime.fromisoformat(
         str(fecha_consulta).replace(" ", "T")).replace(tzinfo=timezone.utc)
     return fecha_utc.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _resumen_consulta_historial(tipo_consulta, respuesta):
+    """Genera un resumen breve y consistente para cada tipo de consulta."""
+    if tipo_consulta == "clima":
+        return (f"{respuesta.get('estado_tiempo', 'sin estado')} | "
+                f"{respuesta.get('temperatura', 'sin temperatura')} grados | "
+                f"humedad {respuesta.get('humedad', 'sin dato')}%")
+    if tipo_consulta == "tipo_cambio":
+        return (f"1 {respuesta.get('origen', '?')} = "
+                f"{respuesta.get('tipo_cambio', 'sin tasa')} "
+                f"{respuesta.get('destino', '?')}")
+    if tipo_consulta == "salario_convertido":
+        return (f"{respuesta.get('salario_base', 'sin dato')} "
+                f"{respuesta.get('moneda_base', '')} = "
+                f"{respuesta.get('salario_convertido', 'sin dato')} "
+                f"{respuesta.get('moneda_destino', '')}")
+    if tipo_consulta == "geolocalizacion_ip":
+        return (f"{respuesta.get('ciudad', 'sin ciudad')}, "
+                f"{respuesta.get('pais', 'sin país')}")
+    if tipo_consulta == "geolocalizacion_dispositivo":
+        return (f"{respuesta.get('ciudad', 'sin ciudad')}, "
+                f"{respuesta.get('region', 'sin región')}, "
+                f"{respuesta.get('pais', 'sin país')}")
+    return "consulta registrada"
 
 
 def consultar_salario_convertido(sesion, repo_empleados, repo_consultas):
@@ -811,16 +884,13 @@ def consultar_geolocalizacion_usuario(sesion, repo_consultas):
         except Exception:
             pass
 
-    print("\n  " + "=" * 52)
-    print("  GEolocalizacion por IP")
-    print("  " + "=" * 52)
-    print(f"  IP detectada: {ubicacion.get('ip') or 'No disponible'}")
-    print(f"  Ciudad: {ubicacion.get('ciudad') or 'No disponible'}")
-    print(f"  Pais: {ubicacion.get('pais') or 'No disponible'}")
-    print(f"  Proveedor: {ubicacion.get('proveedor') or 'No disponible'}")
-    print("\n  Nota: La ubicacion obtenida mediante IP es aproximada")
-    print("  y puede no corresponder exactamente a la ubicacion fisica del usuario.")
-    print("  " + "=" * 52)
+    dibujar_encabezado("GEolocalizacion por IP", "Ubicación aproximada")
+    print(f"  • IP detectada: {ubicacion.get('ip') or 'No disponible'}")
+    print(f"  • Ciudad: {ubicacion.get('ciudad') or 'No disponible'}")
+    print(f"  • Pais: {ubicacion.get('pais') or 'No disponible'}")
+    print(f"  • Proveedor: {ubicacion.get('proveedor') or 'No disponible'}")
+    print("\n  Nota: la ubicación por IP puede no coincidir exactamente con la ubicación física.")
+    pausar_resultado()
 
 
 def consultar_geolocalizacion_dispositivo(sesion, repo_consultas):
@@ -839,15 +909,13 @@ def consultar_geolocalizacion_dispositivo(sesion, repo_consultas):
                 sesion.nombre_usuario, "geolocalizacion_dispositivo",
                 {"latitud": latitud, "longitud": longitud}, detalle)
 
-        print("\n  " + "=" * 52)
-        print("  GEOLOCALIZACION DEL DISPOSITIVO")
-        print("  " + "=" * 52)
-        print(f"  Latitud: {detalle.get('latitud')}")
-        print(f"  Longitud: {detalle.get('longitud')}")
+        dibujar_encabezado("GEOLOCALIZACIÓN DEL DISPOSITIVO", "Coordenadas reales autorizadas")
+        print(f"  • Latitud: {detalle.get('latitud')}")
+        print(f"  • Longitud: {detalle.get('longitud')}")
         if precision is not None:
-            print(f"  Precision: {precision} metros")
-        print(f"  Ubicacion: {detalle.get('ciudad')}, {detalle.get('region')}, {detalle.get('pais')}")
-        print("  " + "=" * 52)
+            print(f"  • Precisión: {precision} metros")
+        print(f"  • Ubicación: {detalle.get('ciudad')}, {detalle.get('region')}, {detalle.get('pais')}")
+        pausar_resultado()
     except ErrorApiExterna as error:
         registrar_fallo("Geolocalizacion del dispositivo", error)
         print(f"  No fue posible obtener la ubicacion del dispositivo: {error}")
@@ -859,22 +927,79 @@ def consultar_geolocalizacion_dispositivo(sesion, repo_consultas):
 def consultar_geolocalizacion_menu(sesion, repo_consultas):
     """Submenu para distinguir geolocalizacion por IP y por dispositivo."""
     while True:
-        titulo("GEOLOCALIZACION")
-        print("  1. Geolocalizacion por IP")
-        print("  2. Geolocalizacion del dispositivo")
-        print("  0. Volver")
-        opcion = leer_opcion("  Seleccione una opcion: ")
+        dibujar_encabezado("MÓDULO DE GEOLOCALIZACIÓN", "Diferenciación de tecnologías")
+        _seccion("MÉTODOS DISPONIBLES")
+        _opcion(1, "Geolocalización por IP (aproximada / ip-api.com)")
+        _opcion(2, "Geolocalización del dispositivo (coordenadas reales / GPS)")
+        _seccion("NAVEGACIÓN")
+        _opcion(3, "Volver", ANSI_AMARILLO)
+        opcion = leer_opcion("\n  Seleccione una opción: ", opciones={0, 1, 2, 3})
         if opcion is None:
             continue
-        if opcion == 1:
-            consultar_geolocalizacion_usuario(sesion, repo_consultas)
-            continue
-        if opcion == 2:
-            consultar_geolocalizacion_dispositivo(sesion, repo_consultas)
-            continue
-        if opcion == 0:
+        handlers = {
+            1: lambda: consultar_geolocalizacion_usuario(sesion, repo_consultas),
+            2: lambda: consultar_geolocalizacion_dispositivo(sesion, repo_consultas),
+        }
+        if opcion in {0, 3}:
             return
-        print("  Por favor, coloque la opcion correcta.")
+        handlers[opcion]()
+
+
+def _consultar_clima(sesion, repo_consultas, ciudad_default, pais_default):
+    ciudad = pedir(f"  Ciudad [{ciudad_default}]: ",
+                   lambda x: v.validar_nombre(x, "La ciudad"), ciudad_default)
+    pais = pedir(f"  País [{pais_default}]: ",
+                 lambda x: v.validar_nombre(x, "El país"), pais_default)
+    try:
+        clima = ClienteApisExternas.consultar_clima(ciudad, pais)
+        if repo_consultas is not None:
+            repo_consultas.crear(
+                sesion.nombre_usuario, "clima",
+                {"ciudad": ciudad, "pais": pais}, clima)
+        dibujar_encabezado("RESULTADO DEL CLIMA", f"{ciudad}, {pais}")
+        print(f"  • Temperatura: {clima['temperatura']} grados")
+        print(f"  • Humedad: {clima['humedad']}%")
+        print(f"  • Estado: {clima['estado_tiempo']} (código {clima['codigo_climatico']})")
+        if clima["alerta"]:
+            print(f"  • {clima['alerta']}")
+    except ErrorDominio as error:
+        print(f"  Dato inválido: {mensaje_seguro(error)}")
+    except ErrorApiExterna as error:
+        registrar_fallo("Consulta a servicio externo", error)
+        print(f"  Consulta externa no disponible: {error}")
+    except Exception as error:
+        registrar_fallo("Consulta a servicio externo", error)
+        print("  Consulta externa no disponible en este momento.")
+    pausar_resultado()
+
+
+def _consultar_tipo_cambio(sesion, repo_consultas):
+    moneda_origen = pedir(
+        "  Moneda de origen [USD]: ",
+        lambda x: v.validar_codigo_moneda(x, "La moneda"), "USD")
+    moneda_destino = pedir(
+        "  Moneda de destino [CLP]: ",
+        lambda x: v.validar_codigo_moneda(x, "La moneda"), "CLP")
+    try:
+        cambio = ClienteApisExternas.consultar_tipo_cambio(
+            moneda_origen, moneda_destino)
+        if repo_consultas is not None:
+            repo_consultas.crear(
+                sesion.nombre_usuario, "tipo_cambio",
+                {"origen": moneda_origen.upper(), "destino": moneda_destino.upper()}, cambio)
+        dibujar_encabezado("RESULTADO DEL TIPO DE CAMBIO", "Consulta externa")
+        print(f"  • Conversión: 1 {cambio['origen']} = "
+              f"{cambio['tipo_cambio']} {cambio['destino']}")
+        print("  • Respuesta guardada localmente.")
+    except ErrorDominio as error:
+        print(f"  Dato inválido: {mensaje_seguro(error)}")
+    except ErrorApiExterna as error:
+        registrar_fallo("Consulta a servicio externo", error)
+        print(f"  Consulta externa no disponible: {error}")
+    except Exception as error:
+        registrar_fallo("Consulta a servicio externo", error)
+        print("  Consulta externa no disponible en este momento.")
+    pausar_resultado()
 
 
 def consultar_servicios_externos(sesion, repo_empleados, repo_consultas):
@@ -888,79 +1013,33 @@ def consultar_servicios_externos(sesion, repo_empleados, repo_consultas):
     pais_default = pais_default or "Chile"
 
     while True:
-        titulo("6. Consultas externas para planificacion")
-        print("  1. Consultar geolocalizacion")
-        print("  2. Consultar clima")
-        print("  3. Consultar tipo de cambio")
+        dibujar_encabezado("CONSULTAS EXTERNAS", "APIs, clima y geolocalización")
+        _seccion("HERRAMIENTAS")
+        _opcion(1, "Consultar geolocalizacion")
+        _opcion(2, "Consultar clima")
+        _opcion(3, "Consultar tipo de cambio")
         if sesion.tiene_permiso("ver_salarios"):
-            print("  4. Convertir salario a otra moneda")
-        print("  5. Ver historial de consultas")
-        print("  0. Volver")
-        opcion = leer_opcion("  Seleccione una opcion: ")
+            _opcion(4, "Convertir salario a otra moneda")
+        _opcion(5, "Ver historial de consultas")
+        _seccion("NAVEGACIÓN")
+        _opcion(0, "Volver", ANSI_AMARILLO)
+        opcion = leer_opcion("\n  Seleccione una opción: ", opciones={0, 1, 2, 3, 4, 5})
         if opcion is None:
             continue
-
-        if opcion == 1:
-            consultar_geolocalizacion_menu(sesion, repo_consultas)
-            continue
-        if opcion == 2:
-            ciudad = pedir(f"  Ciudad [{ciudad_default}]: ",
-                           lambda x: v.validar_nombre(x, "La ciudad"), ciudad_default)
-            pais = pedir(f"  Pais [{pais_default}]: ",
-                         lambda x: v.validar_nombre(x, "El pais"), pais_default)
-            try:
-                clima = ClienteApisExternas.consultar_clima(ciudad, pais)
-                if repo_consultas is not None:
-                    repo_consultas.crear(
-                        sesion.nombre_usuario, "clima",
-                        {"ciudad": ciudad, "pais": pais}, clima)
-                print(f"  Clima: {clima['temperatura']} grados, humedad {clima['humedad']}%")
-                print(f"  Estado del tiempo: {clima['estado_tiempo']} "
-                      f"(codigo {clima['codigo_climatico']})")
-                if clima["alerta"]:
-                    print(f"  {clima['alerta']}")
-            except ErrorDominio as error:
-                print(f"  Dato invalido: {mensaje_seguro(error)}")
-            except ErrorApiExterna as error:
-                registrar_fallo("Consulta a servicio externo", error)
-                print(f"  Consulta externa no disponible: {error}")
-            except Exception as error:
-                registrar_fallo("Consulta a servicio externo", error)
-                print("  Consulta externa no disponible en este momento.")
-            continue
-        if opcion == 3:
-            moneda_origen = pedir("  Moneda de origen [USD]: ",
-                                  lambda x: v.validar_codigo_moneda(x, "La moneda"), "USD")
-            moneda_destino = pedir("  Moneda de destino [CLP]: ",
-                                   lambda x: v.validar_codigo_moneda(x, "La moneda"), "CLP")
-            try:
-                cambio = ClienteApisExternas.consultar_tipo_cambio(
-                    moneda_origen, moneda_destino)
-                if repo_consultas is not None:
-                    repo_consultas.crear(
-                        sesion.nombre_usuario, "tipo_cambio",
-                        {"origen": moneda_origen.upper(), "destino": moneda_destino.upper()}, cambio)
-                print(f"  Tipo de cambio: 1 {cambio['origen']} = "
-                      f"{cambio['tipo_cambio']} {cambio['destino']}")
-                print("  Respuestas guardadas localmente.")
-            except ErrorDominio as error:
-                print(f"  Dato invalido: {mensaje_seguro(error)}")
-            except ErrorApiExterna as error:
-                registrar_fallo("Consulta a servicio externo", error)
-                print(f"  Consulta externa no disponible: {error}")
-            except Exception as error:
-                registrar_fallo("Consulta a servicio externo", error)
-                print("  Consulta externa no disponible en este momento.")
-            continue
-        if opcion == 4 and sesion.tiene_permiso("ver_salarios"):
-            consultar_salario_convertido(sesion, repo_empleados, repo_consultas)
-            continue
-        if opcion == 5:
-            mostrar_historial_consultas(repo_consultas)
-            continue
+        handlers = {
+            1: lambda: consultar_geolocalizacion_menu(sesion, repo_consultas),
+            2: lambda: _consultar_clima(
+                sesion, repo_consultas, ciudad_default, pais_default),
+            3: lambda: _consultar_tipo_cambio(sesion, repo_consultas),
+            5: lambda: mostrar_historial_consultas(repo_consultas),
+        }
+        if sesion.tiene_permiso("ver_salarios"):
+            handlers[4] = lambda: consultar_salario_convertido(
+                sesion, repo_empleados, repo_consultas)
         if opcion == 0:
             return
-        print("  Por favor, coloque la opcion correcta.")
+        if opcion in handlers:
+            handlers[opcion]()
 
 
 def leer_id(mensaje):
@@ -1240,42 +1319,37 @@ def menu_entidad(sesion, nombre, crear, mostrar, actualizar, eliminar, consultar
         print("  Esta cuenta no tiene permiso para gestionar datos.")
         return
     while True:
-        titulo(f"Menu {nombre}")
+        dibujar_encabezado(f"GESTIÓN DE {nombre.upper()}", "Administración de datos EcoTech")
+        handlers = {}
         if solo_consulta:
-            print("  1. Mostrar")
-            print("  2. Consultar")
+            _seccion("CONSULTA")
+            _opcion(1, "Mostrar registros")
+            _opcion(2, "Consultar por identificador")
+            handlers = {1: mostrar, 2: consultar}
         else:
-            print("  1. Crear")
-            print("  2. Mostrar")
-            print("  3. Actualizar")
-            print("  4. Eliminar")
-            print("  5. Consultar")
-        print("  0. Volver")
-        opcion = leer_opcion("  Seleccione una opcion: ")
+            _seccion("GESTIÓN INTERNA")
+            _opcion(1, "Crear")
+            _opcion(2, "Mostrar registros")
+            _opcion(3, "Actualizar")
+            _opcion(4, "Eliminar")
+            _opcion(5, "Consultar por identificador")
+            handlers = {
+                1: lambda: (crear(), sincronizar()),
+                2: mostrar,
+                3: lambda: (actualizar(), sincronizar()),
+                4: lambda: (eliminar(), sincronizar()),
+                5: consultar,
+            }
+        _seccion("NAVEGACIÓN")
+        _opcion(0, "Volver", ANSI_AMARILLO)
+        opcion = leer_opcion("\n  Seleccione una opción: ", opciones=set(handlers) | {0})
         if opcion is None:
             continue
         try:
-            if solo_consulta and opcion == 1:
-                mostrar()
-            elif solo_consulta and opcion == 2:
-                consultar()
-            elif not solo_consulta and opcion == 1:
-                crear()
-                sincronizar()
-            elif not solo_consulta and opcion == 2:
-                mostrar()
-            elif not solo_consulta and opcion == 3:
-                actualizar()
-                sincronizar()
-            elif not solo_consulta and opcion == 4:
-                eliminar()
-                sincronizar()
-            elif not solo_consulta and opcion == 5:
-                consultar()
-            elif opcion == 0:
+            if opcion == 0:
                 return
-            else:
-                print("  Por favor, coloque la opcion correcta.")
+            handlers[opcion]()
+            pausar_resultado()
         except ErrorDominio as error:
             registrar_fallo(f"Operacion '{nombre}' opcion {opcion}", error)
             print(f"  {mensaje_seguro(error)}")
@@ -1337,28 +1411,15 @@ def menu_principal(
         repo_departamentos, repo_empleados, repo_proyectos, repo_registros)
     solo_consulta = not sesion.tiene_permiso("gestionar_datos")
     while True:
-        titulo("Menu principal")
-        print("  1. Empleados")
-        print("  2. Proyectos")
-        print("  3. Departamentos")
-        print("  4. Registros de horas")
-        print("  5. Informes")
-        puede_consultar_externos = sesion.tiene_permiso("consultar_externos")
-        if not solo_consulta or puede_consultar_externos:
-            print("  6. Consultas externas")
-            if sesion.tiene_permiso("gestionar_usuarios"):
-                print("  7. Usuarios registrados")
-                print("  8. Cambiar de usuario")
-            else:
-                print("  7. Cambiar de usuario")
-        else:
-            print("  6. Cambiar de usuario")
-        print("  0. Salir del programa")
-        opcion = leer_opcion("  Seleccione una opcion: ")
-        if opcion is None:
-            continue
-        if opcion == 1:
-            menu_entidad(
+        dibujar_encabezado("ECOTECH SOLUTIONS", "Sistema Integrado de Gestión")
+        _seccion("GESTIÓN INTERNA")
+        _opcion(1, "Gestión de empleados")
+        _opcion(2, "Gestión de proyectos")
+        _opcion(3, "Gestión de departamentos")
+        _opcion(4, "Control de tiempos")
+        _opcion(5, "Módulo de informes (PDF / Excel)")
+        handlers = {
+            1: lambda: menu_entidad(
                 sesion, "Empleados",
                 lambda: crear_empleado(repo_empleados, repo_departamentos),
                 lambda: mostrar_empleados(repo_empleados, sesion),
@@ -1367,26 +1428,23 @@ def menu_principal(
                     repo_empleados, "empleado",
                     lambda: mostrar_empleados(repo_empleados, sesion)),
                 lambda: consultar_empleado(repo_empleados, sesion), sincronizar,
-                solo_consulta)
-        elif opcion == 2:
-            menu_entidad(
+                solo_consulta),
+            2: lambda: menu_entidad(
                 sesion, "Proyectos", lambda: crear_proyecto(repo_proyectos),
                 lambda: mostrar_proyectos(repo_proyectos),
                 lambda: actualizar_proyecto(repo_proyectos),
                 lambda: eliminar_dato(repo_proyectos, "proyecto", mostrar_proyectos),
                 lambda: consultar_proyecto(repo_proyectos), sincronizar,
-                solo_consulta)
-        elif opcion == 3:
-            menu_entidad(
+                solo_consulta),
+            3: lambda: menu_entidad(
                 sesion, "Departamentos", lambda: crear_departamento(repo_departamentos),
                 lambda: mostrar_departamentos(repo_departamentos),
                 lambda: actualizar_departamento(repo_departamentos),
                 lambda: eliminar_dato(
                     repo_departamentos, "departamento", mostrar_departamentos),
                 lambda: consultar_departamento(repo_departamentos), sincronizar,
-                solo_consulta)
-        elif opcion == 4:
-            menu_entidad(
+                solo_consulta),
+            4: lambda: menu_entidad(
                 sesion, "Registros de horas",
                 lambda: crear_registro(
                     repo_registros, repo_empleados, repo_proyectos, sesion),
@@ -1394,22 +1452,101 @@ def menu_principal(
                 lambda: actualizar_registro(repo_registros),
                 lambda: eliminar_dato(repo_registros, "registro", mostrar_registros),
                 lambda: consultar_registro(repo_registros), sincronizar,
-                solo_consulta)
-        elif opcion == 5:
-            generar_informes(
+                solo_consulta),
+            5: lambda: generar_informes(
                 sesion, repo_departamentos, repo_proyectos, repo_empleados,
-                repo_registros, planta)
-        elif opcion == 6 and (not solo_consulta or sesion.tiene_permiso("consultar_externos")):
-            consultar_servicios_externos(sesion, repo_empleados, repo_consultas)
-        elif opcion == 7 and not solo_consulta and sesion.tiene_permiso("gestionar_usuarios"):
-            menu_usuarios(sesion, repo_usuarios)
-        elif opcion == (6 if solo_consulta and not sesion.tiene_permiso("consultar_externos") else
-                        (8 if sesion.tiene_permiso("gestionar_usuarios") else 7)):
-            return "cambiar_usuario"
-        elif opcion == 0:
-            return "salir"
+                repo_registros, planta),
+        }
+        puede_consultar_externos = sesion.tiene_permiso("consultar_externos")
+        if not solo_consulta or puede_consultar_externos:
+            _seccion("HERRAMIENTAS Y REPORTES")
+            _opcion(6, "Consultas externas (APIs / Geolocalización)")
+            handlers[6] = lambda: consultar_servicios_externos(
+                sesion, repo_empleados, repo_consultas)
+            if sesion.tiene_permiso("gestionar_usuarios"):
+                _opcion(7, "Gestión de usuarios")
+                handlers[7] = lambda: menu_usuarios(sesion, repo_usuarios)
+                _opcion(8, "Cambiar de usuario")
+                opcion_cambiar_usuario = 8
+            else:
+                _opcion(7, "Cambiar de usuario")
+                opcion_cambiar_usuario = 7
         else:
-            print("  Por favor, coloque la opcion correcta.")
+            _seccion("NAVEGACIÓN")
+            _opcion(6, "Cambiar de usuario")
+            opcion_cambiar_usuario = 6
+        _seccion("SALIDA")
+        _opcion(0, "Salir del sistema", ANSI_AMARILLO)
+        handlers[opcion_cambiar_usuario] = lambda: "cambiar_usuario"
+        opcion = leer_opcion(
+            "\n  Seleccione una opción: ",
+            opciones=set(handlers) | {0})
+        if opcion is None:
+            continue
+        if opcion == 0:
+            return "salir"
+        if opcion == opcion_cambiar_usuario:
+            return "cambiar_usuario"
+        handlers[opcion]()
+        pausar_resultado()
+
+
+def mostrar_resumen_operativo(
+        repo_departamentos, repo_empleados, repo_proyectos, repo_registros,
+        repo_usuarios, andres, planta, bodega, base_nueva):
+    """Muestra el resumen de arranque completo antes de abrir el menú."""
+    dibujar_encabezado("RESUMEN OPERATIVO", "Datos recuperados y controles del sistema")
+
+    _seccion("ESTRUCTURA ORGANIZACIONAL")
+    for registro_dep in repo_departamentos.listar():
+        departamento = cargar_departamento_completo(
+            registro_dep.id, repo_departamentos, repo_empleados)
+        print(f"  • {departamento.nombre}")
+        for persona in departamento.empleados:
+            print(f"      - {persona}")
+        jefe = departamento.obtener_gerente()
+        print(f"      Jefatura: {jefe.nombre if jefe else 'sin gerente asignado'}")
+
+    _seccion("PROYECTOS Y EQUIPOS")
+    for proyecto in repo_proyectos.listar():
+        print(f"  • {proyecto.nombre} | inicio: {proyecto.fecha_inicio}")
+        for persona in repo_empleados.listar_por_proyecto(proyecto.id):
+            print(f"      - {persona.nombre}")
+
+    _seccion("REGISTRO Y APROBACIÓN DE JORNADAS")
+    for registro in repo_registros.listar():
+        print(f"  • {registro.fecha} | {registro.horas:g} h | "
+              f"{registro.empleado.nombre} | {registro.estado}")
+    print(f"  • Total de jornadas guardadas: {len(repo_registros.listar())}")
+    print(f"  • Pendientes de aprobación: {len(repo_registros.listar_pendientes())}")
+
+    _seccion("CONTROL DE ACCESO")
+    intentos = [
+        ("amunoz", "gerencia-2026"),
+        ("crojas", "camila-2026"),
+        ("amunoz", "clave-equivocada"),
+        ("nadie", "lo-que-sea"),
+    ]
+    for nombre, clave in intentos:
+        sesion_prueba = repo_usuarios.autenticar(nombre, clave)
+        if sesion_prueba is None:
+            print(f"  • {nombre:<16} acceso denegado")
+        else:
+            print(f"  • {nombre:<16} autenticado como {sesion_prueba.rol:<14} "
+                  f"gestionar_datos: {sesion_prueba.tiene_permiso('gestionar_datos')}")
+
+    print("\n  Protección del salario (R5):")
+    gerente_bd = repo_empleados.buscar_por_id(andres.id)
+    print(f"  • Vía método: {gerente_bd.obtener_salario()}")
+    print(f"  • Acceso directo: {getattr(gerente_bd, 'salario', 'no existe')}")
+    try:
+        gerente_bd.actualizar_salario(-1)
+    except ValueError as error:
+        print(f"  • Valor inválido: {error}")
+
+    exportar_datos_json(
+        repo_departamentos, repo_empleados, repo_proyectos, repo_registros)
+    pausar_resultado()
 
 
 def main():
@@ -1462,16 +1599,6 @@ def main():
         bd.cerrar()
         return
 
-    titulo("1. Estructura organizacional (recuperada desde la base)")
-    for registro_dep in repo_departamentos.listar():
-        departamento = cargar_departamento_completo(
-            registro_dep.id, repo_departamentos, repo_empleados)
-        print(f"\n  {departamento.nombre}")
-        for persona in departamento.empleados:
-            print(f"     - {persona}")
-        jefe = departamento.obtener_gerente()
-        print(f"     Jefatura: {jefe.nombre if jefe else 'sin gerente asignado'}")
-
     # ---------------- 2. Proyectos ----------------
     planta = repo_proyectos.buscar_por_nombre("Planta Solar Quillota")
     if planta is None:
@@ -1489,14 +1616,7 @@ def main():
     repo_proyectos.asignar_empleado(bodega.id, paula.id)
     repo_proyectos.asignar_empleado(bodega.id, camila.id)
 
-    titulo("2. Proyectos y equipos")
-    for proyecto in repo_proyectos.listar():
-        print(f"\n  {proyecto.nombre}  (inicio {proyecto.fecha_inicio})")
-        for persona in repo_empleados.listar_por_proyecto(proyecto.id):
-            print(f"     - {persona.nombre}")
-
     # ---------------- 3. Jornadas ----------------
-    titulo("3. Registro y aprobacion de jornadas")
     if base_nueva:
         jornadas = [
             RegistroTiempo(date(2026, 4, 15), 8.0, "Montaje de estructura", camila, planta),
@@ -1515,38 +1635,10 @@ def main():
                 )
             else:
                 estado = "aprobada" if aprobada else "pendiente de aprobacion"
-            print(f"  {jornada.fecha}  {jornada.horas:>5} h  "
-                  f"{jornada.empleado.nombre:<22} {estado}")
 
-    print(f"\n  Total de jornadas guardadas: {len(repo_registros.listar())}")
-    print(f"  Pendientes de aprobacion:    {len(repo_registros.listar_pendientes())}")
-    exportar_datos_json(
-        repo_departamentos, repo_empleados, repo_proyectos, repo_registros)
-
-    # ---------------- 4. Cuentas y control de acceso ----------------
-    titulo("4. Control de acceso")
-    intentos = [
-        ("amunoz", "gerencia-2026"),
-        ("crojas", "camila-2026"),
-        ("amunoz", "clave-equivocada"),
-        ("nadie", "lo-que-sea"),
-    ]
-    for nombre, clave in intentos:
-        sesion_prueba = repo_usuarios.autenticar(nombre, clave)
-        if sesion_prueba is None:
-            print(f"  {nombre:<16} acceso denegado")
-        else:
-            print(f"  {nombre:<16} autenticado como {sesion_prueba.rol:<14} "
-                                f"gestionar_datos: {sesion_prueba.tiene_permiso('gestionar_datos')}")
-
-    print("\n  Proteccion del salario (R5):")
-    gerente_bd = repo_empleados.buscar_por_id(andres.id)
-    print(f"     Via metodo:        {gerente_bd.obtener_salario()}")
-    print(f"     Acceso directo:    {getattr(gerente_bd, 'salario', 'no existe')}")
-    try:
-        gerente_bd.actualizar_salario(-1)
-    except ValueError as error:
-        print(f"     Valor invalido:    {error}")
+    mostrar_resumen_operativo(
+        repo_departamentos, repo_empleados, repo_proyectos, repo_registros,
+        repo_usuarios, andres, planta, bodega, base_nueva)
 
     while sesion is not None:
         accion = menu_principal(
