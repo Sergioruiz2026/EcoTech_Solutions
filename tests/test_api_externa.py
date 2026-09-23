@@ -124,13 +124,23 @@ class TestClienteApisExternas(unittest.TestCase):
         usuario = Usuario("operador1", "ClaveSegura1", "operador")
         repo_consultas = object()
 
-        with patch("main.leer_opcion", side_effect=[2, 0]), \
+        with patch("main.leer_opcion", side_effect=[5, 0]), \
                 patch("main.mostrar_historial_consultas") as mostrar_historial, \
                 patch("sys.stdout"):
             consultar_servicios_externos(usuario, None, repo_consultas)
 
         self.assertEqual(mostrar_historial.call_count, 1)
         mostrar_historial.assert_called_once_with(repo_consultas)
+
+    def test_submenu_geolocalizacion_esta_visible(self):
+        usuario = Usuario("operador1", "ClaveSegura1", "operador")
+
+        with patch("main.leer_opcion", side_effect=[0]), \
+                patch("sys.stdout") as stdout:
+            consultar_servicios_externos(usuario, None, None)
+
+        salida = "\n".join(call.args[0] for call in stdout.write.call_args_list)
+        self.assertIn("Consultar geolocalizacion", salida)
 
     def test_consultas_externas_muestra_ubicacion_detectada(self):
         usuario = Usuario("operador1", "ClaveSegura1", "operador")
@@ -143,7 +153,7 @@ class TestClienteApisExternas(unittest.TestCase):
 
         with patch("main.ClienteApisExternas.consultar_ubicacion_ip",
                    return_value={"ciudad": "Santiago", "pais": "Chile"}), \
-                patch("main.leer_opcion", side_effect=[1, 0]), \
+                patch("main.leer_opcion", side_effect=[2, 0]), \
                 patch("main.pedir", side_effect=["Santiago", "Chile", "USD", "CLP"]) as pedir_mock, \
                 patch("main.ClienteApisExternas.consultar_clima",
                       return_value={
@@ -162,6 +172,27 @@ class TestClienteApisExternas(unittest.TestCase):
         self.assertIn("Ubicacion detectada: Santiago, Chile", salida)
         self.assertEqual(pedir_mock.call_args_list[0].args[2], "Santiago")
         self.assertEqual(pedir_mock.call_args_list[1].args[2], "Chile")
+
+    def test_submenu_geolocalizacion_muestra_datos_de_ip(self):
+        usuario = Usuario("operador1", "ClaveSegura1", "operador")
+
+        with patch("main.ClienteApisExternas.consultar_ubicacion_ip",
+                   return_value={
+                       "ip": "8.8.8.8",
+                       "ciudad": "Santiago",
+                       "pais": "Chile",
+                       "proveedor": "Google LLC",
+                   }), \
+                patch("main.leer_opcion", side_effect=[1, 0]), \
+                patch("sys.stdout") as stdout:
+            consultar_servicios_externos(usuario, None, None)
+
+        salida = "\n".join(call.args[0] for call in stdout.write.call_args_list)
+        self.assertIn("GEolocalizacion por IP", salida)
+        self.assertIn("IP detectada: 8.8.8.8", salida)
+        self.assertIn("Ciudad: Santiago", salida)
+        self.assertIn("Pais: Chile", salida)
+        self.assertIn("Proveedor: Google LLC", salida)
 
 
 if __name__ == "__main__":
